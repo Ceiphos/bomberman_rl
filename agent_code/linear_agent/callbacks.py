@@ -3,7 +3,7 @@ import pickle
 import random
 
 import numpy as np
-
+#commentar:)
 
 ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT', 'BOMB']
 
