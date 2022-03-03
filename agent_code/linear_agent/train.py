@@ -1,21 +1,22 @@
+from .callbacks import state_to_features, MODEL_NAME, ACTIONS
+import events as e
 from collections import namedtuple, deque
 
 import pickle
 from typing import List
 import numpy as np
+np.seterr(all='raise')
 
-import events as e
-from .callbacks import state_to_features, MODEL_NAME, ACTIONS
 
 # This is only an example!
 Transition = namedtuple('Transition',
                         ('state', 'action', 'next_state', 'reward'))
 
 # Hyper parameters -- DO modify
-TRANSITION_HISTORY_SIZE = 3  # keep only ... last transitions
+TRANSITION_HISTORY_SIZE = 30  # keep only ... last transitions
 RECORD_ENEMY_TRANSITIONS = 1.0  # record enemy transitions with probability ...
 ALPHA = 0.1
-GAMMA = 0.1
+GAMMA = 0.9
 
 # Events
 PLACEHOLDER_EVENT = "PLACEHOLDER"
@@ -58,7 +59,7 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     #     events.append(PLACEHOLDER_EVENT)
 
     # state_to_features is defined in callbacks.py
-    self.transitions.append(Transition(state_to_features(old_game_state), self_action, state_to_features(new_game_state), reward_from_events(self, events)))
+    self.transitions.append(Transition(state_to_features(old_game_state, self.logger), self_action, state_to_features(new_game_state, self.logger), reward_from_events(self, events)))
 
 
 def end_of_round(self, last_game_state: dict, last_action: str, events: List[str]):
@@ -66,22 +67,18 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     Called at the end of each game or when the agent died to hand out final rewards.
     This replaces game_events_occurred in this round.
 
-    This is similar to game_events_occurred. self.events will contain all events that
-    occurred during your agent's final step.
-
-    This is *one* of the places where you could update your agent.
-    This is also a good place to store an agent that you updated.
-
     :param self: The same object that is passed to all of your callbacks.
     """
     self.logger.debug(f'Encountered event(s) {", ".join(map(repr, events))} in final step')
-    self.transitions.append(Transition(state_to_features(last_game_state), last_action, state_to_features(last_game_state), reward_from_events(self, events)))
+    self.transitions.append(Transition(state_to_features(last_game_state, self.logger), last_action, state_to_features(last_game_state, self.logger), reward_from_events(self, events)))
 
     self.logger.info('Round Ended. Start model update')
     oldBeta = self.model.beta
     for i, _ in enumerate(ACTIONS):
         summe = 0
         for (feature, action, next_feature, reward) in self.transitions:
+            if type(feature) == type(None) or type(next_feature) == type(None):
+                continue
             Qs = [self.model.Q(next_feature, a) for a in range(len(ACTIONS))]
             Y = reward + GAMMA * np.max(Qs)
             summe += np.transpose(feature) * (Y - feature @ oldBeta[i])
@@ -105,9 +102,14 @@ def reward_from_events(self, events: List[str]) -> int:
     certain behavior.
     """
     game_rewards = {
-        e.COIN_COLLECTED: 1,
+        e.COIN_COLLECTED: 2,
         e.KILLED_OPPONENT: 5,
-        e.INVALID_ACTION: -.1  # idea: the custom event is bad
+        e.INVALID_ACTION: -.1,
+        e.KILLED_SELF: -5,
+        e.MOVED_UP: 0.5,
+        e.MOVED_DOWN: 0.5,
+        e.MOVED_RIGHT: 0.5,
+        e.MOVED_LEFT: 0.5,
     }
     reward_sum = 0
     for event in events:

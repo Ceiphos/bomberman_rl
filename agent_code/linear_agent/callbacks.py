@@ -3,16 +3,18 @@ import pickle
 import random
 
 import numpy as np
-#commentar:)
+
+np.seterr(all='raise')
 
 ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT', 'BOMB']
 
 MODEL_NAME = "linear_model.pt"
+FEATURE_SIZE = 34
 
 
 class Model:
     def __init__(self, feature_number):
-        self.beta = np.zeros((len(ACTIONS), feature_number))
+        self.beta = np.random.uniform(size=(len(ACTIONS), feature_number))
 
     def predict(self, game_features):
         actionQValues = [self.Q(game_features, i) for i in range(len(ACTIONS))]
@@ -37,7 +39,7 @@ def setup(self):
         self.logger.info("Setting up model from scratch.")
         # weights = np.random.rand(len(ACTIONS))
         # self.model = weights / weights.sum()
-        self.model = Model(10)
+        self.model = Model(FEATURE_SIZE)
     else:
         self.logger.info("Loading model from saved state.")
         with open(MODEL_NAME, "rb") as file:
@@ -60,12 +62,12 @@ def act(self, game_state: dict) -> str:
         # 80%: walk in any direction. 10% wait. 10% bomb.
         return np.random.choice(ACTIONS, p=[.2, .2, .2, .2, .1, .1])
     else:
-        action = self.model.predict(state_to_features(game_state))
+        action = self.model.predict(state_to_features(game_state, self.logger))
         self.logger.debug(f"Querying model for action. Got {action}")
         return action
 
 
-def state_to_features(game_state: dict) -> np.array:
+def state_to_features(game_state: dict, logger) -> np.array:
     """
     *This is not a required function, but an idea to structure your code.*
 
@@ -83,11 +85,70 @@ def state_to_features(game_state: dict) -> np.array:
     if game_state is None:
         return None
 
+    DIRECTIONS = {
+        'UP': np.array((0, -1)),
+        'DOWN': np.array((0, 1)),
+        'LEFT': np.array((-1, 0)),
+        'RIGHT': np.array((1, 0)),
+        'NULL': np.array((0, 0))
+    }
+
+    coins = np.array(game_state['coins'])
+    position = np.array(game_state['self'][-1])
+    field = game_state['field']
+
+    # Sourrounding
+    x, y = position + DIRECTIONS['UP']
+    up_tile = field[x, y]
+    x, y = position + DIRECTIONS['DOWN']
+    down_tile = field[x, y]
+    x, y = position + DIRECTIONS['LEFT']
+    left_tile = field[x, y]
+    x, y = position + DIRECTIONS['RIGHT']
+    right_tile = field[x, y]
+    logger.debug("Calculated sourrounding")
+
+    # 3 nearest coins
+    coin_distances = np.linalg.norm(coins-position, axis=1)
+    sort_indices = np.argsort(coin_distances)
+    nearest_coins = np.ones((3, 2)) * -field.shape[0]  # TODO
+    number_of_coins = min(3, len(sort_indices))
+    nearest_coins[:number_of_coins] = coins[sort_indices[:number_of_coins]]
+    logger.debug(f"Calculated 3 nearest coins. Found {number_of_coins}")
+
+    # walking direction to nearest coin #TODO proper path finding
+    nearest_coin_vec = nearest_coins[0]-position
+    if (nearest_coin_vec[0] > 0 and right_tile == 0):
+        nearest_coin_direction = DIRECTIONS['RIGHT']
+    elif (nearest_coin_vec[0] < 0 and left_tile == 0):
+        nearest_coin_direction = DIRECTIONS['LEFT']
+    elif (nearest_coin_vec[1] > 0 and down_tile == 0):
+        nearest_coin_direction = DIRECTIONS['DOWN']
+    elif (nearest_coin_vec[1] < 0 and up_tile == 0):
+        nearest_coin_direction = DIRECTIONS['UP']
+    else:
+        nearest_coin_direction = DIRECTIONS['NULL']
+    logger.debug("Calculated direction of nearest coin")
+
+    # 10 nearest empty tiles #TODO check accessible using path finding
+    empty_tiles = np.array(np.where(field == 0)).transpose()
+    empty_tile_distances = np.linalg.norm(empty_tiles-position, axis=1)
+    sort_indices = np.argsort(empty_tile_distances)
+    nearest_empty_tiles = np.ones((10, 2)) * -1
+    number_of_empty_tiles = min(10, len(sort_indices))
+    nearest_empty_tiles[:number_of_empty_tiles] = empty_tiles[sort_indices][:number_of_empty_tiles]
+    logger.debug(f"Calculated 10 nearest empty tiles. Found {number_of_empty_tiles}")
+
     # # For example, you could construct several channels of equal shape, ...
-    # channels = []
-    # channels.append(...)
+    channels = []  # shape n,2
+    channels.append(position/field.shape[0])
+    channels.append((up_tile, down_tile))
+    channels.append((left_tile, right_tile))
+    channels.extend(nearest_coins/field.shape[0])
+    channels.append(nearest_coin_direction/field.shape[0])
+    channels.extend(nearest_empty_tiles/field.shape[0])
     # # concatenate them as a feature tensor (they must have the same shape), ...
-    # stacked_channels = np.stack(channels)
-    # # and return them as a vector
-    # return stacked_channels.reshape(-1)
-    return np.ones(10)
+    stacked_channels = np.stack(channels).reshape(-1)
+
+    assert len(stacked_channels) == FEATURE_SIZE
+    return stacked_channels

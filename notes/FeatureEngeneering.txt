@@ -1,0 +1,6 @@
+Features for coin heaven
+-Sourrounding: What is up, down, left, right
+-Position of 3 nearest coins
+-Direction of nearest coin
+-Position of 10 nearest accessable tiles
+
