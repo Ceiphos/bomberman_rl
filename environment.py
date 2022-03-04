@@ -281,6 +281,7 @@ class GenericWorld:
             "steps": self.step,
             **{key: sum(a.statistics[key] for a in self.agents) for key in ["coins", "kills", "suicides"]}
         }
+        self.logger.info("Round ended.")
 
     def time_to_stop(self):
         # Check round stopping criteria
@@ -543,12 +544,18 @@ class GUI:
     def render_text(self, text, x, y, color, halign='left', valign='top', size='medium', aa=False):
         text_surface = self.fonts[size].render(text, aa, color)
         text_rect = text_surface.get_rect()
-        if halign == 'left':   text_rect.left = x
-        if halign == 'center': text_rect.centerx = x
-        if halign == 'right':  text_rect.right = x
-        if valign == 'top':    text_rect.top = y
-        if valign == 'center': text_rect.centery = y
-        if valign == 'bottom': text_rect.bottom = y
+        if halign == 'left':
+            text_rect.left = x
+        if halign == 'center':
+            text_rect.centerx = x
+        if halign == 'right':
+            text_rect.right = x
+        if valign == 'top':
+            text_rect.top = y
+        if valign == 'center':
+            text_rect.centery = y
+        if valign == 'bottom':
+            text_rect.bottom = y
         self.screen.blit(text_surface, text_rect)
 
     def render(self):
