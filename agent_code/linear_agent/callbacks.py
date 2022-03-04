@@ -9,7 +9,7 @@ np.seterr(all='raise')
 ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT', 'BOMB']
 
 MODEL_NAME = "linear_model.pt"
-FEATURE_SIZE = 34
+FEATURE_SIZE = 55
 
 
 class Model:
@@ -95,6 +95,7 @@ def state_to_features(game_state: dict, logger) -> np.array:
 
     coins = np.array(game_state['coins'])
     position = np.array(game_state['self'][-1])
+    dropped_bomb = game_state['self'][2]
     field = game_state['field']
 
     # Sourrounding
@@ -134,21 +135,50 @@ def state_to_features(game_state: dict, logger) -> np.array:
     empty_tiles = np.array(np.where(field == 0)).transpose()
     empty_tile_distances = np.linalg.norm(empty_tiles-position, axis=1)
     sort_indices = np.argsort(empty_tile_distances)
-    nearest_empty_tiles = np.ones((10, 2)) * -1
+    nearest_empty_tiles = np.ones((10, 2), dtype=int) * -1
     number_of_empty_tiles = min(10, len(sort_indices))
-    nearest_empty_tiles[:number_of_empty_tiles] = empty_tiles[sort_indices][:number_of_empty_tiles]
+    nearest_empty_tiles[:number_of_empty_tiles] = empty_tiles[sort_indices[1:]][:number_of_empty_tiles]
+    nearest_empty_tiles = nearest_empty_tiles - position
     logger.debug(f"Calculated 10 nearest empty tiles. Found {number_of_empty_tiles}")
+
+    # Bomb Info: Calculate Bomb field and use values of the field at the 10 nearest empty tiles
+    bomb_field = np.ones_like(field) * -1
+    for ((x, y), t) in game_state['bombs']:
+        # TODO Consider walls
+        for i in range(4):
+            if (x + i < bomb_field.shape[0]):
+                bomb_field[x + i, y] = min(t, bomb_field[x + i, y])
+            if (x - i >= 0):
+                bomb_field[x - i, y] = min(t, bomb_field[x - i, y])
+            if (y + i < bomb_field.shape[0]):
+                bomb_field[x, y + i] = min(t, bomb_field[x, y + i])
+            if (y - i >= 0):
+                bomb_field[x, y - i] = min(t, bomb_field[x, y - i])
+    nearest_bomb_field = np.empty(10)
+
+    nearest_bomb_field[:number_of_empty_tiles] = bomb_field[nearest_empty_tiles[:number_of_empty_tiles, 0], nearest_empty_tiles[:number_of_empty_tiles, 1]]
+
+    # Explosion Map: get the explosion map for the nearest 10 empty tiles
+    nearest_explosion_map = np.zeros(10)
+    nearest_explosion_map[:number_of_empty_tiles] = game_state['explosion_map'][nearest_empty_tiles[:number_of_empty_tiles, 0], nearest_empty_tiles[:number_of_empty_tiles, 1]]
 
     # # For example, you could construct several channels of equal shape, ...
     channels = []  # shape n,2
     channels.append(position/field.shape[0])
-    channels.append((up_tile, down_tile))
-    channels.append((left_tile, right_tile))
     channels.extend(nearest_coins/field.shape[0])
     channels.append(nearest_coin_direction/field.shape[0])
     channels.extend(nearest_empty_tiles/field.shape[0])
-    # # concatenate them as a feature tensor (they must have the same shape), ...
     stacked_channels = np.stack(channels).reshape(-1)
+    channels.clear()  # now shape n
+    channels.append(int(dropped_bomb))
+    channels.append(up_tile)
+    channels.append(down_tile)
+    channels.append(left_tile)
+    channels.append(right_tile)
+    channels.extend(nearest_bomb_field/3)
+    channels.extend(nearest_explosion_map/2)
 
+    # concatenate them as a feature tensor (they must have the same shape), ...
+    stacked_channels = np.concatenate((stacked_channels, channels))
     assert len(stacked_channels) == FEATURE_SIZE
     return stacked_channels

@@ -3,4 +3,7 @@ Features for coin heaven
 -Position of 3 nearest coins
 -Direction of nearest coin
 -Position of 10 nearest accessable tiles
+-Information about nearby bombs
+    -isInBombRadius
+    -make a bomb field that contains the minimum time until it is hit by an explosion
 
