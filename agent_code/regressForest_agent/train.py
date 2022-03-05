@@ -1,4 +1,5 @@
 from .callbacks import state_to_features, MODEL_NAME, ACTIONS
+from .helper import gameStateSymmetry, actionSym, SYMMETRIES
 import events as e
 from collections import namedtuple, deque
 
@@ -13,7 +14,7 @@ Transition = namedtuple('Transition',
                         ('state', 'action', 'next_state', 'reward'))
 
 # Hyper parameters -- DO modify
-TRANSITION_HISTORY_SIZE = 50  # keep only ... last transitions
+TRANSITION_HISTORY_SIZE = 100  # keep only ... last transitions
 RECORD_ENEMY_TRANSITIONS = 1.0  # record enemy transitions with probability ...
 ALPHA = 0.1
 GAMMA = 0.9
@@ -59,7 +60,12 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     #     events.append(PLACEHOLDER_EVENT)
 
     # state_to_features is defined in callbacks.py
-    self.transitions.append(Transition(state_to_features(old_game_state, self.logger), self_action, state_to_features(new_game_state, self.logger), reward_from_events(self, events)))
+    if (old_game_state != None and new_game_state != None):
+        for sym in SYMMETRIES:
+            features = state_to_features(gameStateSymmetry(old_game_state, sym), self.logger)
+            newFeatures = state_to_features(gameStateSymmetry(new_game_state, sym), self.logger)
+            self_action = actionSym(self_action, sym)
+            self.transitions.append(Transition(features, self_action, newFeatures, reward_from_events(self, events)))
 
 
 def end_of_round(self, last_game_state: dict, last_action: str, events: List[str]):
@@ -70,7 +76,7 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     :param self: The same object that is passed to all of your callbacks.
     """
     self.logger.debug(f'Encountered event(s) {", ".join(map(repr, events))} in final step')
-    self.transitions.append(Transition(state_to_features(last_game_state, self.logger), last_action, None, reward_from_events(self, events)))
+    # self.transitions.append(Transition(state_to_features(last_game_state, self.logger), last_action, None, reward_from_events(self, events)))
 
     self.logger.info('Round Ended. Start model update')
     Xs = [[]]*len(ACTIONS)
