@@ -4,13 +4,15 @@ import random
 
 import numpy as np
 from sklearn.ensemble import RandomForestRegressor
+from .helper import findPath
 
 np.seterr(all='raise')
 
-ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT', 'BOMB']
+#ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT', 'BOMB']
+ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT']
 
 MODEL_NAME = "regressForest_model.pt"
-FEATURE_SIZE = 55
+FEATURE_SIZE = 36 #57
 
 
 class Model:
@@ -31,8 +33,10 @@ class Model:
         self.forests[action].fit(game_features, Ys)
 
     def createRandomData(self, size):
-        X = np.random.uniform(size=(size, FEATURE_SIZE))
-        Y = np.random.uniform(size=(size))
+        #X = np.random.uniform(size=(size, FEATURE_SIZE))
+        #Y = np.random.uniform(size=(size))
+        X = np.zeros((size, FEATURE_SIZE))
+        Y = np.zeros(size)
         return X, Y
 
 
@@ -65,11 +69,12 @@ def act(self, game_state: dict) -> str:
     :return: The action to take as a string.
     """
     # todo Exploration vs exploitation
-    random_prob = .1
+    round_number = game_state['round']
+    random_prob = max(0.1,0.96**(int(round_number)-1))
     if self.train and random.random() < random_prob:
         self.logger.debug("Choosing action purely at random.")
         # 80%: walk in any direction. 10% wait. 10% bomb.
-        return np.random.choice(ACTIONS, p=[.2, .2, .2, .2, .1, .1])
+        return np.random.choice(ACTIONS, p=[.2, .2, .2, .2, .2])
     else:
         action = self.model.predict(state_to_features(game_state, self.logger))
         self.logger.debug(f"Querying model for action. Got {action}")
@@ -119,13 +124,16 @@ def state_to_features(game_state: dict, logger) -> np.array:
     logger.debug("Calculated sourrounding")
 
     # 3 nearest coins
-    coin_distances = np.linalg.norm(coins-position, axis=1)
-    sort_indices = np.argsort(coin_distances)
-    nearest_coins = np.ones((3, 2)) * -field.shape[0]  # TODO
-    number_of_coins = min(3, len(sort_indices))
-    nearest_coins[:number_of_coins] = coins[sort_indices[:number_of_coins]]
-    logger.debug(f"Calculated 3 nearest coins. Found {number_of_coins}")
-
+    if coins.shape[0]>0:
+        coin_distances = np.linalg.norm(coins-position, axis=1)
+        sort_indices = np.argsort(coin_distances)
+        nearest_coins = np.ones((3, 2)) * -field.shape[0]  # TODO
+        number_of_coins = min(3, len(sort_indices))
+        nearest_coins[:number_of_coins] = coins[sort_indices[:number_of_coins]]
+        logger.debug(f"Calculated 3 nearest coins. Found {number_of_coins}")
+    else:
+        nearest_coins = np.array([position, position, position])
+        logger.debug('Game State contains no coin.')
     # walking direction to nearest coin #TODO proper path finding
     nearest_coin_vec = nearest_coins[0]-position
     if (nearest_coin_vec[0] > 0 and right_tile == 0):
@@ -151,7 +159,7 @@ def state_to_features(game_state: dict, logger) -> np.array:
     logger.debug(f"Calculated 10 nearest empty tiles. Found {number_of_empty_tiles}")
 
     # Bomb Info: Calculate Bomb field and use values of the field at the 10 nearest empty tiles
-    bomb_field = np.ones_like(field) * -1
+    bomb_field = np.ones_like(field) * 5 #if set to -1, min will always return -1
     for ((x, y), t) in game_state['bombs']:
         # TODO Consider walls
         for i in range(4):
@@ -171,21 +179,30 @@ def state_to_features(game_state: dict, logger) -> np.array:
     nearest_explosion_map = np.zeros(10)
     nearest_explosion_map[:number_of_empty_tiles] = game_state['explosion_map'][nearest_empty_tiles[:number_of_empty_tiles, 0], nearest_empty_tiles[:number_of_empty_tiles, 1]]
 
+    #Pathfinding for next coin
+    path = findPath(field, position, nearest_coins[0])
+    if (path != None and len(path)>1):
+        feat_path = path[1]
+    else: 
+        feat_path = np.zeros(2)
+    
+
     # # For example, you could construct several channels of equal shape, ...
     channels = []  # shape (n,2)
     channels.append(position/field.shape[0])
     channels.extend(nearest_coins/field.shape[0])
     channels.append(nearest_coin_direction/field.shape[0])
     channels.extend(nearest_empty_tiles/field.shape[0])
+    channels.append(feat_path)
     stacked_channels = np.stack(channels).reshape(-1)
     channels.clear()  # now shape (n,)
-    channels.append(int(dropped_bomb))
+    #channels.append(int(dropped_bomb))
     channels.append(up_tile)
     channels.append(down_tile)
     channels.append(left_tile)
     channels.append(right_tile)
-    channels.extend(nearest_bomb_field/3)
-    channels.extend(nearest_explosion_map/2)
+    #channels.extend(nearest_bomb_field/3)
+    #channels.extend(nearest_explosion_map/2)
 
     # concatenate them as a feature tensor (they must have the same shape), ...
     stacked_channels = np.concatenate((stacked_channels, channels))

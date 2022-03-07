@@ -1,8 +1,9 @@
 import numpy as np
 
-from callbacks import ACTIONS
+#from .callbacks import ACTIONS
 
 SYMMETRIES = ['rotate_right', 'rotate_left', 'rotate_180', 'mirror_x', 'mirror_y', 'id']
+ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT']
 
 
 def gameStateSymmetry(gameState, symmetry):

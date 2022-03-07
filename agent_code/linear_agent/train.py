@@ -60,7 +60,17 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
 
     # state_to_features is defined in callbacks.py
     self.transitions.append(Transition(state_to_features(old_game_state, self.logger), self_action, state_to_features(new_game_state, self.logger), reward_from_events(self, events)))
-
+    feat=state_to_features(old_game_state, self.logger)
+    feat_new=state_to_features(new_game_state, self.logger)
+    if type(feat) == type(None) or type(feat_new) == type(None):
+                pass
+    else:
+        mirx_feat, mirx_action = mirrorx(feat,self_action)
+        mirx_feat_new, _ = mirrorx(feat_new, self_action)
+        miry_feat, miry_action = mirrory(feat,self_action)
+        miry_feat_new, _ = mirrory(feat_new, self_action)
+        self.transitions.append(Transition(mirx_feat, mirx_action, mirx_feat_new, reward_from_events(self, events)))
+        self.transitions.append(Transition(miry_feat, miry_action, miry_feat_new, reward_from_events(self, events)))
 
 def end_of_round(self, last_game_state: dict, last_action: str, events: List[str]):
     """
@@ -88,6 +98,7 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
         self.model.updateBeta(i, newBeta)
 
     self.transitions.clear()
+    self.model.EXPLORATION_RATE = max(0.05, self.model.EXPLORATION_RATE*0.96)
 
     # Store the model
     with open(MODEL_NAME, "wb") as file:
@@ -102,14 +113,15 @@ def reward_from_events(self, events: List[str]) -> int:
     certain behavior.
     """
     game_rewards = {
-        e.COIN_COLLECTED: 2,
-        e.KILLED_OPPONENT: 5,
-        e.INVALID_ACTION: -.1,
-        e.KILLED_SELF: -5,
-        e.MOVED_UP: 0.5,
+        #e.COIN_COLLECTED: 2,
+        #e.KILLED_OPPONENT: 5,
+        e.INVALID_ACTION: -0.5,
+        #e.KILLED_SELF: -5,
+        e.MOVED_UP: 0.5,   #moved:0.5 waited: -0.2
         e.MOVED_DOWN: 0.5,
         e.MOVED_RIGHT: 0.5,
         e.MOVED_LEFT: 0.5,
+        #e.WAITED: -0.2
     }
     reward_sum = 0
     for event in events:
@@ -117,3 +129,38 @@ def reward_from_events(self, events: List[str]) -> int:
             reward_sum += game_rewards[event]
     self.logger.debug(f"Awarded {reward_sum} for events {', '.join(events)}")
     return reward_sum
+
+
+def mirrory(features, action):
+    if action == 'UP':
+        mir_act = 'DOWN'
+    elif action == 'DOWN':
+        mir_act = 'UP'
+    else:
+        mir_act = action
+    miry_feats= features
+   # miry_feats[1] = 1-features[1]
+    miry_feats[0] = features[1]
+    miry_feats[1] = features[0]
+   # miry_feats[7] = 1-features[7]
+    #miry_feats[9] = 1-features[9]
+    #miry_feats[11] = 1-features[11]
+    #miry_feats[13] = -1*features[13]
+    return miry_feats, mir_act
+
+def mirrorx(features, action):
+    if action == 'LEFT':
+        mir_act = 'RIGHT'
+    elif action == 'RIGHT':
+        mir_act = 'LEFT'
+    else:
+        mir_act = action
+    mirx_feats= features
+    #mirx_feats[0] = 1-features[0]
+    mirx_feats[2] = features[3]
+    mirx_feats[3] = features[2]
+    #mirx_feats[6] = 1-features[6]
+    #mirx_feats[8] = 1-features[8]
+    #mirx_feats[10] = 1-features[10]
+    #mirx_feats[12] = -1*features[12]
+    return mirx_feats, mir_act

@@ -109,16 +109,19 @@ def reward_from_events(self, events: List[str]) -> int:
     certain behavior.
     """
     game_rewards = {
-        e.COIN_COLLECTED: 2,
+        e.COIN_COLLECTED: 20,
         e.KILLED_OPPONENT: 5,
-        e.INVALID_ACTION: -.5,
-        e.KILLED_SELF: -5,
-        e.MOVED_UP: 0.5,
-        e.MOVED_DOWN: 0.5,
-        e.MOVED_RIGHT: 0.5,
-        e.MOVED_LEFT: 0.5,
-        e.WAITED: -.5
+        e.INVALID_ACTION: -1.2,#3
+        e.KILLED_SELF: -20,
+        e.MOVED_UP: 2,
+        e.MOVED_DOWN: 2,
+        e.MOVED_RIGHT: 2,
+        e.MOVED_LEFT: 2,
+        e.WAITED: -1.2 #2
     }
+    # if invalid_action punished to strong, model will wait. (-5,-3)
+    #ifpunished not strong enough, agent acts invalid (-2,-3)
+    # (-3,-1) started to wait, but mainly invalid actions, same for (-1,-0.5)
     reward_sum = 0
     for event in events:
         if event in game_rewards:
