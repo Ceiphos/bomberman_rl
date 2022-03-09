@@ -1,6 +1,5 @@
 import numpy as np
-
-#from .callbacks import ACTIONS
+import time
 
 SYMMETRIES = ['rotate_right', 'rotate_left', 'rotate_180', 'mirror_x', 'mirror_y', 'id']
 ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT']
@@ -220,6 +219,23 @@ def findPath(field, start, end):
                 open_list.append(child)
 
 
+class epsilonPolicy:
+    def __init__(self, rounds, starting_eps, lambdas, min_eps):
+        assert len(rounds) == len(starting_eps) == len(lambdas) == len(min_eps)
+        assert rounds[0] == 0
+        self.rounds = rounds
+        self.starting_eps = starting_eps
+        self.lambdas = lambdas
+        self.min_eps = min_eps
+
+    def epsilon(self, round):
+        for i, threshold in enumerate(self.rounds):
+            if (i == len(self.rounds) - 1):
+                return self.starting_eps[i] * np.exp(-self.lambdas[i] * (round - threshold)) + self.min_eps[i]
+            elif threshold <= round < self.rounds[i+1]:
+                return self.starting_eps[i] * np.exp(-self.lambdas[i] * (round - threshold)) + self.min_eps[i]
+
+
 if __name__ == '__main__':
     field = np.zeros((17, 17))
     field[0] = np.ones(17)
@@ -229,7 +245,6 @@ if __name__ == '__main__':
     field[3, 2:5] = 1
     start = np.array((1, 1))
     end = np.array((1, 15))
-
     path = findPath(field, start, end)
 
     for x, row in enumerate(field):
@@ -239,3 +254,11 @@ if __name__ == '__main__':
             else:
                 print(int(value), end='')
         print()
+
+    a = epsilonPolicy([0, 1000, 2000], [1, 0.7, 0.3], [1/500, 1/300, 1/100], [0.05]*3)
+    print(a.epsilon(0))
+    print(a.epsilon(999))
+    print(a.epsilon(1000))
+    print(a.epsilon(1999))
+    print(a.epsilon(2000))
+    print(a.epsilon(3000))
