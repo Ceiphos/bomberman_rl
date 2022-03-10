@@ -17,6 +17,8 @@ from agents import Agent, SequentialAgentBackend
 from fallbacks import pygame
 from items import Coin, Explosion, Bomb
 
+from helper import findPath, findNearestItem
+
 WorldArgs = namedtuple("WorldArgs",
                        ["no_gui", "fps", "turn_based", "update_interval", "save_replay", "replay", "make_video", "continue_without_training", "log_dir", "save_stats", "match_name", "seed", "silence_errors", "scenario"])
 
@@ -128,6 +130,9 @@ class GenericWorld:
         return is_free
 
     def perform_agent_action(self, agent: Agent, action: str):
+        collect_coins = []
+        l = 200
+        
         # Perform the specified action if possible, wait otherwise
         if action == 'UP' and self.tile_is_free(agent.x, agent.y - 1):
             agent.y -= 1
@@ -150,6 +155,24 @@ class GenericWorld:
             agent.add_event(e.WAITED)
         else:
             agent.add_event(e.INVALID_ACTION)
+            
+        for coin in self.coins:
+            if coin.collectable:
+                collect_coins.append((coin.x, coin.y))
+                
+        if len(collect_coins)>0:        
+            nearest_coin = findNearestItem(self.arena, collect_coins, (agent.x, agent.y))
+            if nearest_coin != None:
+                path = findPath(self.arena,(agent.x,agent.y), nearest_coin)
+                l = len(path)
+        if l < agent.current_path_length:
+            agent.add_event(e.MOVED_CLOSER_TO_COIN)
+            agent.current_path_length = l
+            
+        
+        
+
+        
 
     def poll_and_run_agents(self):
         raise NotImplementedError()

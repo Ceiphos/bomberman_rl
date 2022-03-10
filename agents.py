@@ -84,6 +84,7 @@ class Agent:
         self.train = train
 
         self.total_score = 0
+        self.current_path_length = 200
 
         self.dead = None
         self.score = None
@@ -118,6 +119,9 @@ class Agent:
     def start_round(self):
         self.dead = False
         self.score = 0
+
+        self.current_path_length = 200
+
 
         self.statistics = defaultdict(int)
         self.trophies = []
