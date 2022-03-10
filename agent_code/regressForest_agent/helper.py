@@ -12,6 +12,14 @@ DIRECTIONS = {
 }
 
 
+def addPosition(a, b):
+    return (a[0] + b[0], a[1] + b[1])
+
+
+def subPosition(a, b):
+    return (a[0] - b[0], a[1] - b[1])
+
+
 def gameStateSymmetry(gameState, symmetry):
     assert symmetry in SYMMETRIES
 
@@ -191,16 +199,16 @@ def findPath(field, start, end):
                 current = current.parent
             return path[::-1]
 
-        DIRECTIONS = (
-            np.array((0, -1)),
-            np.array((0, 1)),
-            np.array((-1, 0)),
-            np.array((1, 0)),
+        directions = (
+            (0, -1),
+            (0, 1),
+            (-1, 0),
+            (1, 0),
         )
 
         children = []
-        for dir in DIRECTIONS:
-            pos = current_node.position + dir
+        for dir in directions:
+            pos = addPosition(current_node.position, dir)
 
             if (field[pos[0], pos[1]] != 0):
                 continue
@@ -212,7 +220,7 @@ def findPath(field, start, end):
                 continue
 
             child.g = current_node.g + 1
-            child.h = np.linalg.norm(child.position - end_node.position)
+            child.h = np.linalg.norm(subPosition(child.position, end_node.position))
 
             if child in open_list:
                 index = open_list.index(child)
@@ -227,7 +235,7 @@ def getItemDirection(field, item, position):
     path = findPath(field, position, item)
     if path is not None:
         if (len(path) > 1):
-            x, y = path[1] - position
+            x, y = subPosition(path[1], position)
             if (x == 1 and y == 0):
                 return DIRECTIONS['RIGHT']
             elif (x == -1 and y == 0):
@@ -261,7 +269,7 @@ def getNearestItem(field, items, position):
             return node
         visited.append(node)
         for dir in directions:
-            next_node = (node[0] + dir[0], node[1] + dir[1])
+            next_node = addPosition(node, dir)
             if (next_node in visited or field[next_node[0], next_node[1]] != 0 or next_node in queue):
                 continue
             else:
@@ -293,8 +301,8 @@ if __name__ == '__main__':
     field[1:15, 5] = 1
     field[3, 2:7] = 1
     field[1:4, 7] = 1
-    start = np.array((1, 1))
-    end = np.array((1, 15))
+    start = (1, 1)
+    end = (1, 15)
     path = findPath(field, start, end)
     print(path)
     print(getItemDirection(field, end, start))
@@ -304,7 +312,7 @@ if __name__ == '__main__':
 
     for y, row in enumerate(field.T):
         for x, value in enumerate(row):
-            if (np.any(np.all(np.array((x, y)) == path, axis=1))):
+            if ((x, y) in path):
                 print("x", end='')
             elif ((x, y) in items):
                 print("I", end='')
