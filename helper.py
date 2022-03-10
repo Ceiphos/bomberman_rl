@@ -257,7 +257,7 @@ def getItemDirection(field, item, position):
         return DIRECTIONS['NULL']
 
 
-def getNearestItem(field, items, position):
+def findNNearestItems(field, items, position, n):
     visited = []
     queue = [position]
 
@@ -268,10 +268,14 @@ def getNearestItem(field, items, position):
         (1, 0),
     )
 
+    result = []
+
     while len(queue) > 0:
         node = queue.pop(0)
         if (node in items):
-            return node
+            result.append(node)
+            if len(result) == n:
+                return result
         visited.append(node)
         for dir in directions:
             next_node = addPosition(node, dir)
@@ -279,6 +283,14 @@ def getNearestItem(field, items, position):
                 continue
             else:
                 queue.append(next_node)
+
+
+def findNearestItem(field, items, position):
+    nearestItems = findNNearestItems(field, items, position, 1)
+    if nearestItems is not None:
+        return nearestItems[0]
+    else:
+        return None
 
 
 class epsilonPolicy:
@@ -312,8 +324,8 @@ if __name__ == '__main__':
     print(path)
     print(getItemDirection(field, end, start))
     items = [(3, 8), (1, 6), (14, 7), (8, 3)]
-    print(getNearestItem(field, items, tuple(start)))
-    print(getNearestItem(field, [(1, 6)], tuple(start)))
+    print(findNNearestItems(field, items, start, 2))
+    print(findNearestItem(field, [(1, 6)], start))
 
     for y, row in enumerate(field.T):
         for x, value in enumerate(row):
