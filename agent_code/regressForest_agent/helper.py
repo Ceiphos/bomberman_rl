@@ -2,7 +2,14 @@ import numpy as np
 import time
 
 SYMMETRIES = ['rotate_right', 'rotate_left', 'rotate_180', 'mirror_x', 'mirror_y', 'id']
-ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT']
+DIRECTIONS = {
+    'UP':    [1, 0, 0, 0, 0],
+    'DOWN':  [0, 1, 0, 0, 0],
+    'LEFT':  [0, 0, 1, 0, 0],
+    'RIGHT': [0, 0, 0, 1, 0],
+    'HERE':  [0, 0, 0, 0, 1],
+    'NULL':  [0, 0, 0, 0, 0]
+}
 
 
 def gameStateSymmetry(gameState, symmetry):
@@ -142,9 +149,6 @@ def findPath(field, start, end):
 
     Uses A* algortihm
     """
-
-    field = np.where(field != 0, 1, 0)  # Set all non accesible tiles to 1
-
     class Node():
         def __init__(self, parent=None, position=None):
             self.parent = parent
@@ -219,6 +223,51 @@ def findPath(field, start, end):
                 open_list.append(child)
 
 
+def getItemDirection(field, item, position):
+    path = findPath(field, position, item)
+    if path is not None:
+        if (len(path) > 1):
+            x, y = path[1] - position
+            if (x == 1 and y == 0):
+                return DIRECTIONS['RIGHT']
+            elif (x == -1 and y == 0):
+                return DIRECTIONS['LEFT']
+            elif (y == 1 and x == 0):
+                return DIRECTIONS['UP']
+            elif (y == -1 and x == 0):
+                return DIRECTIONS['DOWN']
+            else:
+                raise RuntimeError(f"Calculated direction is not valid: {x},{y}")
+        else:
+            return DIRECTIONS['HERE']
+    else:
+        return DIRECTIONS['NULL']
+
+
+def getNearestItem(field, items, position):
+    visited = []
+    queue = [position]
+
+    directions = (
+        (0, -1),
+        (0, 1),
+        (-1, 0),
+        (1, 0),
+    )
+
+    while len(queue) > 0:
+        node = queue.pop(0)
+        if (node in items):
+            return node
+        visited.append(node)
+        for dir in directions:
+            next_node = (node[0] + dir[0], node[1] + dir[1])
+            if (next_node in visited or field[next_node[0], next_node[1]] != 0 or next_node in queue):
+                continue
+            else:
+                queue.append(next_node)
+
+
 class epsilonPolicy:
     def __init__(self, rounds, starting_eps, lambdas, min_eps):
         assert len(rounds) == len(starting_eps) == len(lambdas) == len(min_eps)
@@ -241,16 +290,24 @@ if __name__ == '__main__':
     field[0] = np.ones(17)
     field[-1] = np.ones(17)
     field[:, (0, -1)] = 1
-    field[1:7, 5] = 1
-    field[3, 2:5] = 1
+    field[1:15, 5] = 1
+    field[3, 2:7] = 1
+    field[1:4, 7] = 1
     start = np.array((1, 1))
     end = np.array((1, 15))
     path = findPath(field, start, end)
+    print(path)
+    print(getItemDirection(field, end, start))
+    items = [(3, 8), (1, 6), (14, 7), (8, 3)]
+    print(getNearestItem(field, items, tuple(start)))
+    print(getNearestItem(field, [(1, 6)], tuple(start)))
 
-    for x, row in enumerate(field):
-        for y, value in enumerate(row):
+    for y, row in enumerate(field.T):
+        for x, value in enumerate(row):
             if (np.any(np.all(np.array((x, y)) == path, axis=1))):
                 print("x", end='')
+            elif ((x, y) in items):
+                print("I", end='')
             else:
                 print(int(value), end='')
         print()

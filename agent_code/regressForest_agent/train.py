@@ -116,7 +116,6 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     with open("logs/score.txt", "a") as file:
         file.write(str(self.model.forest.oob_score_) + "\n")
 
-    # self.transitions.clear()
     self.logger.info('Model update completed')
 
     # Store the model
