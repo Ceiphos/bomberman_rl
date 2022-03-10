@@ -157,6 +157,11 @@ def findPath(field, start, end):
 
     Uses A* algortihm
     """
+
+    # Check if endpoint is accesible at all
+    if field[end[0], end[1]] != 0:
+        return None
+
     class Node():
         def __init__(self, parent=None, position=None):
             self.parent = parent
