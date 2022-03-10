@@ -3,12 +3,12 @@ import time
 
 SYMMETRIES = ['rotate_right', 'rotate_left', 'rotate_180', 'mirror_x', 'mirror_y', 'id']
 DIRECTIONS = {
-    'UP':    [1, 0, 0, 0, 0],
-    'DOWN':  [0, 1, 0, 0, 0],
-    'LEFT':  [0, 0, 1, 0, 0],
+    'UP': [1, 0, 0, 0, 0],
+    'DOWN': [0, 1, 0, 0, 0],
+    'LEFT': [0, 0, 1, 0, 0],
     'RIGHT': [0, 0, 0, 1, 0],
-    'HERE':  [0, 0, 0, 0, 1],
-    'NULL':  [0, 0, 0, 0, 0]
+    'HERE': [0, 0, 0, 0, 1],
+    'NULL': [0, 0, 0, 0, 0]
 }
 
 
@@ -32,24 +32,24 @@ def gameStateSymmetry(gameState, symmetry):
         bombs = gameState['bombs']
         for i, bomb in enumerate(bombs):
             pos = np.array(bomb[0])
-            pos = rotation@(pos - center) + center
+            pos = rotation @ (pos - center) + center
             bombs[i] = (tuple(pos.astype(int)), bomb[1])
 
         coins = gameState['coins']
         for i, coin in enumerate(coins):
             pos = np.array(coin)
-            pos = rotation@(pos - center) + center
+            pos = rotation @ (pos - center) + center
             coins[i] = tuple(pos.astype(int))
 
         agent = gameState['self']
         pos = np.array(agent[3])
-        pos = rotation@(pos - center) + center
+        pos = rotation @ (pos - center) + center
         agent = (agent[0], agent[1], agent[2], tuple(pos.astype(int)))
 
         others = gameState['others']
         for i, other in enumerate(others):
             pos = np.array(other[3])
-            pos = rotation@(pos - center) + center
+            pos = rotation @ (pos - center) + center
             other = (other[0], other[1], other[2], tuple(pos.astype(int)))
             others[i] = other
 
@@ -89,7 +89,7 @@ def gameStateSymmetry(gameState, symmetry):
         newGameState['others'] = others
 
     shape = np.array(gameState['field'].shape)
-    center = (shape-1)/2
+    center = (shape - 1) / 2
     if (symmetry == 'rotate_right'):
         newGameState['field'] = np.rot90(gameState['field'], -1)
         newGameState['explosion_map'] = np.rot90(gameState['explosion_map'], -1)
@@ -157,7 +157,8 @@ def findPath(field, start, end):
 
     Uses A* algortihm
     """
-
+    assert start is not None
+    assert end is not None
     # Check if endpoint is accesible at all
     if field[end[0], end[1]] != 0:
         return None
@@ -237,6 +238,10 @@ def findPath(field, start, end):
 
 
 def getItemDirection(field, item, position):
+    assert position is not None
+    if item is None:
+        return DIRECTIONS['NULL']
+
     path = findPath(field, position, item)
     if path is not None:
         if (len(path) > 1):
@@ -258,6 +263,8 @@ def getItemDirection(field, item, position):
 
 
 def findNNearestItems(field, items, position, n):
+    if (len(items) == 0):
+        return None
     visited = []
     queue = [position]
 
@@ -306,7 +313,7 @@ class epsilonPolicy:
         for i, threshold in enumerate(self.rounds):
             if (i == len(self.rounds) - 1):
                 return self.starting_eps[i] * np.exp(-self.lambdas[i] * (round - threshold)) + self.min_eps[i]
-            elif threshold <= round < self.rounds[i+1]:
+            elif threshold <= round < self.rounds[i + 1]:
                 return self.starting_eps[i] * np.exp(-self.lambdas[i] * (round - threshold)) + self.min_eps[i]
 
 
@@ -337,7 +344,7 @@ if __name__ == '__main__':
                 print(int(value), end='')
         print()
 
-    a = epsilonPolicy([0, 1000, 2000], [1, 0.7, 0.3], [1/500, 1/300, 1/100], [0.05]*3)
+    a = epsilonPolicy([0, 1000, 2000], [1, 0.7, 0.3], [1 / 500, 1 / 300, 1 / 100], [0.05] * 3)
     print(a.epsilon(0))
     print(a.epsilon(999))
     print(a.epsilon(1000))

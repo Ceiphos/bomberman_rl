@@ -4,16 +4,16 @@ import random
 
 import numpy as np
 from sklearn.ensemble import RandomForestRegressor
-from helper import findPath, epsilonPolicy, findNearestItem, getItemDirection
+from helper import findPath, epsilonPolicy, findNearestItem, getItemDirection, addPosition, subPosition, DIRECTIONS
 
 
 np.seterr(all='raise')
 
-ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT']
+ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT', 'BOMB']
 
 
 MODEL_NAME = "regressForest_model.pt"
-FEATURE_SIZE = 6
+FEATURE_SIZE = 29
 
 
 class Model:
@@ -58,11 +58,12 @@ def setup(self):
         # weights = np.random.rand(len(ACTIONS))
         # self.model = weights / weights.sum()
         self.model = Model()
-        self.eps = epsilonPolicy([0, 1000, 2000], [1, 0.7, 0.3], [1/300, 1/300, 1/200], [0.05]*3)
+        self.eps = epsilonPolicy([0, 1000, 2000], [1, 0.7, 0.3], [1 / 300, 1 / 300, 1 / 200], [0.05] * 3)
     else:
         self.logger.info("Loading model from saved state.")
         with open(MODEL_NAME, "rb") as file:
             self.model = pickle.load(file)
+            assert self.model.forest.n_features_in_ == FEATURE_SIZE, "Featrure size of loaded model does not match"
 
 
 def act(self, game_state: dict) -> str:
@@ -104,14 +105,6 @@ def state_to_features(game_state: dict, logger) -> np.array:
     if game_state is None:
         return None
 
-    DIRECTIONS = {
-        'UP': np.array((0, -1)),
-        'DOWN': np.array((0, 1)),
-        'LEFT': np.array((-1, 0)),
-        'RIGHT': np.array((1, 0)),
-        'NULL': np.array((0, 0))
-    }
-
     features = []
 
     coins = game_state['coins']
@@ -119,16 +112,74 @@ def state_to_features(game_state: dict, logger) -> np.array:
     dropped_bomb = game_state['self'][2]
     field = game_state['field']
 
-    # Sourrounding
+    crates = []
+    walls = []
+    for x, column in enumerate(field):
+        for y, value in enumerate(column):
+            if value == 1:
+                crates.append((x, y))
+            elif value == -1:
+                walls.append((x, y))
 
     # walking direction to nearest coin
     nearest_coin = findNearestItem(field, coins, position)
     features += getItemDirection(field, nearest_coin, position)
-    features.append(len(findPath(field, position, nearest_coin)) - 1)
+    if nearest_coin is not None:
+        features.append(len(findPath(field, position, nearest_coin)) - 1)
+    else:
+        features.append(-1)
+
+    # Crates:
+    nearest_crate = findNearestItem(field, crates, position)
+    features += getItemDirection(field, nearest_crate, position)
 
     # Bomb Info:
+    bombs = game_state['bombs']
+    bomb_times = [t for _, t in bombs]
+    bomb_spots = [pos for pos, _ in bombs]
+    bomb_field = np.ones_like(field) * 10  # Initialize the bomb field with a large value, to distiguish from a bomb
+    for (x, y), t in bombs:
+        bomb_field[x, y] = min(t, bomb_field[x, y])
+
+    if bomb_field[position[0], position[1]] < 10:
+        features.append(1)
+    else:
+        features.append(0)
+    features.append(dropped_bomb)
 
     # Explosion Map:
+    explosion_field = game_state['explosion_map']
+    # We treat explosions as walls, as we don't want to walk into either #TODO Check if makes sense
+    for x, column in enumerate(explosion_field):
+        for y, value in enumerate(column):
+            if value != 0:
+                walls.append((x, y))
 
+    # Sourrounding
+    features += surrounding(position, walls, crates, bomb_spots, [])  # TODO add agent information # 16 features
     assert len(features) == FEATURE_SIZE
     return np.array(features)
+
+
+def surrounding(position, walls, crates, bombs, agents):
+    directions = (
+        (0, -1),
+        (0, 1),
+        (-1, 0),
+        (1, 0),
+    )
+    result = []
+    for dir in directions:
+        s = addPosition(position, dir)
+        if s in walls:
+            result += [1, 0, 0, 0]
+        elif s in crates:
+            result += [0, 1, 0, 0]
+        elif s in bombs:
+            result += [0, 0, 1, 0]
+        elif s in agents:
+            result += [0, 0, 0, 1]
+        else:
+            result += [0, 0, 0, 0]
+
+    return result
