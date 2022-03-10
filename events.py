@@ -20,3 +20,5 @@ OPPONENT_ELIMINATED = 'OPPONENT_ELIMINATED'
 SURVIVED_ROUND = 'SURVIVED_ROUND'
 
 MOVED_CLOSER_TO_COIN = 'MOVED_CLOSER_TO_COIN'
+OWN_BOMB_CANT_ESCAPE = 'OWN_BOMB_CANT_ESCAPE' #called when agent drops bomb but cant possibly escape from explosion
+MOVED_IN_EXPLOSION = 'MOVED_IN_EXPLOSION' #called when agent leaves safe place an gets killed by explosion

@@ -309,6 +309,32 @@ class epsilonPolicy:
             elif threshold <= round < self.rounds[i+1]:
                 return self.starting_eps[i] * np.exp(-self.lambdas[i] * (round - threshold)) + self.min_eps[i]
 
+def check_own_escape(field, position):
+    vector_to_safe = [(4,0),
+                      (-4,0),
+                      (0,4),
+                      (0,-4),
+                      (1,1),
+                      (1,-1),
+                      (-1,1),
+                      (-1,-1),
+                      (2,1),
+                      (2,-1),
+                      (-2,1),
+                      (-2,-1),
+                      (1,2),
+                      (-1,2),
+                      (1,-2),
+                      (-1,-2)]
+    for vec in vector_to_safe:
+        check_position = addPosition(position, vec)
+        if (check_position[0] in range(17) and check_position[1] in range(17)):
+            path = findPath(field, position, check_position)
+            if (path != None and len(path)<5):
+                return True
+    return False
+
+
 
 if __name__ == '__main__':
     field = np.zeros((17, 17))

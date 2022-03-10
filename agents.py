@@ -98,6 +98,7 @@ class Agent:
 
         self.x = None
         self.y = None
+        self.old_position = (self.x,self.y)
         self.bombs_left = None
 
         self.last_game_state = None
