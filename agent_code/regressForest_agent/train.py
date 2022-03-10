@@ -1,5 +1,5 @@
 from .callbacks import state_to_features, MODEL_NAME, ACTIONS, FEATURE_SIZE
-from .helper import gameStateSymmetry, actionSym, SYMMETRIES
+from helper import gameStateSymmetry, actionSym, SYMMETRIES
 import events as e
 from collections import namedtuple, deque
 
@@ -131,15 +131,15 @@ def reward_from_events(self, events: List[str]) -> int:
     certain behavior.
     """
     game_rewards = {
-        e.COIN_COLLECTED: 1,
+        e.COIN_COLLECTED: 20,
         e.KILLED_OPPONENT: 5,
-        e.INVALID_ACTION: -3,
+        e.INVALID_ACTION: -15,
         e.KILLED_SELF: -20,
         e.MOVED_UP: -0.5,
         e.MOVED_DOWN: -0.5,
         e.MOVED_RIGHT: -0.5,
         e.MOVED_LEFT: -0.5,
-        e.WAITED: -1.2
+        e.WAITED: -1
     }
     reward_sum = 0
     for event in events:
