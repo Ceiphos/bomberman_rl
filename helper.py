@@ -341,6 +341,36 @@ def check_own_escape(field, position):
                 return True
     return False
 
+def dangerous_position(position, bombs):
+    #score between 0 and 3, 0 for no danger, 3 for death in next step 
+    danger_score = 0
+    directions = (
+        (0, -1),(0, -2),(0, -3),
+        (0, 1),(0, 2),(0, 3),
+        (-1, 0),(-2, 0),(-3, 0),
+        (1, 0),(2, 0),(3, 0)
+    )
+
+    for (pos,t) in bombs:
+        for dir in directions:
+            danger_coord = addPosition(pos,dir)
+            if (danger_coord == position and (3-t)> danger_score):
+                danger_score = (3-t)
+                continue
+    return danger_score
+        
+def find_next_to_crate(field):
+    #return possible positions next to crates as tuples
+    next_to_crates = []
+    ind_crates = np.argwhere(field == 1)
+    for x, y in ind_crates:
+        for u in [-1,1]:
+            if field[x+u,y]==0:
+                next_to_crates.append((x+u,y))
+        for v in[-1,1]:
+            if field[x,y+v]==0:
+                next_to_crates.append((x,y+v))
+    return next_to_crates
 
 
 if __name__ == '__main__':

@@ -17,7 +17,8 @@ Transition = namedtuple('Transition',
 
 # Hyper parameters
 TRAIN_EVERY_N_GAMES = 10
-TRAIN_BATCH_SIZE = 1000
+
+TRAIN_BATCH_SIZE = 500
 TRANSITION_HISTORY_SIZE = 10000  # keep only ... last transitions
 ALPHA = 0.1
 GAMMA = 0.99
@@ -100,8 +101,10 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
 
     Xs = []
     Ys = []
+
     if (len(self.transitions) < TRAIN_BATCH_SIZE):
         return
+    
     batch = random.sample(self.transitions, TRAIN_BATCH_SIZE)
     current_features = np.stack([transition[0] for transition in batch])
     current_qs_list = self.model.Q(current_features)
@@ -150,14 +153,16 @@ def reward_from_events(self, events: List[str]) -> int:
         e.COIN_COLLECTED: 100,
         e.KILLED_OPPONENT: 5,
         e.INVALID_ACTION: -15,
-        e.KILLED_SELF: -200,
-        e.MOVED_UP: -2,
-        e.MOVED_DOWN: -2,
-        e.MOVED_RIGHT: -2,
-        e.MOVED_LEFT: -2,
-        e.WAITED: -5,
-        e.BOMB_DROPPED: -2,
-        e.CRATE_DESTROYED: 50
+        e.KILLED_SELF: -5,
+        e.MOVED_UP: -0.5,
+        e.MOVED_DOWN: -0.5,
+        e.MOVED_RIGHT: -0.5,
+        e.MOVED_LEFT: -0.5,
+        e.WAITED: -10,
+        e.MOVED_CLOSER_TO_COIN: 0.5,
+        e.OWN_BOMB_CANT_ESCAPE: -20,
+        e.CRATE_DESTROYED: 10,
+        e.MOVED_CLOSER_TO_CRATE: 0.5
     }
     reward_sum = 0
     for event in events:

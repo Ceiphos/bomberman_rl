@@ -17,7 +17,7 @@ from agents import Agent, SequentialAgentBackend
 from fallbacks import pygame
 from items import Coin, Explosion, Bomb
 
-from helper import findPath, findNearestItem, check_own_escape
+from helper import findPath, findNearestItem, check_own_escape, find_next_to_crate
 
 WorldArgs = namedtuple("WorldArgs",
                        ["no_gui", "fps", "turn_based", "update_interval", "save_replay", "replay", "make_video", "continue_without_training", "log_dir", "save_stats", "match_name", "seed", "silence_errors", "scenario"])
@@ -168,9 +168,19 @@ class GenericWorld:
             if nearest_coin != None:
                 path = findPath(self.arena,(agent.x,agent.y), nearest_coin)
                 l = len(path)
-        if l < agent.current_path_length:
+        if l < agent.current_path_length_coin:
             agent.add_event(e.MOVED_CLOSER_TO_COIN)
-            agent.current_path_length = l
+            agent.current_path_length_coin = l
+
+        next_to_crates = find_next_to_crate(self.arena)
+        if len(next_to_crates)>0:        
+            nearest_crate = findNearestItem(self.arena, next_to_crates, (agent.x, agent.y))
+            if nearest_crate != None:
+                path = findPath(self.arena,(agent.x,agent.y), nearest_crate)
+                l = len(path)
+        if l < agent.current_path_length_crate:
+            agent.add_event(e.MOVED_CLOSER_TO_CRATE)
+            agent.current_path_length_crate = l
             
         
         

@@ -84,7 +84,8 @@ class Agent:
         self.train = train
 
         self.total_score = 0
-        self.current_path_length = 200
+        self.current_path_length_coin = 200
+        self.current_path_length_crate = 3
 
         self.dead = None
         self.score = None
@@ -121,7 +122,8 @@ class Agent:
         self.dead = False
         self.score = 0
 
-        self.current_path_length = 200
+        self.current_path_length_coin = 200
+        self.current_path_length_crate = 3
 
 
         self.statistics = defaultdict(int)

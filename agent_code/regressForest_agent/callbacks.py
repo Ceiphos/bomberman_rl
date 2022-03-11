@@ -4,7 +4,9 @@ import random
 
 import numpy as np
 from sklearn.ensemble import RandomForestRegressor
-from helper import findPath, epsilonPolicy, findNearestItem, getItemDirection, addPosition, subPosition, DIRECTIONS
+
+from helper import findPath, epsilonPolicy, findNearestItem, getItemDirection, addPosition, subPosition, DIRECTIONS, dangerous_position, find_next_to_crate
+
 
 
 np.seterr(all='raise')
@@ -13,7 +15,7 @@ ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT', 'BOMB']
 
 
 MODEL_NAME = "regressForest_model.pt"
-FEATURE_SIZE = 29
+FEATURE_SIZE = 30
 
 
 class Model:
@@ -111,6 +113,8 @@ def state_to_features(game_state: dict, logger) -> np.array:
     position = game_state['self'][-1]
     dropped_bomb = game_state['self'][2]
     field = game_state['field']
+    bombs = game_state['bombs']
+
 
     crates = []
     walls = []
@@ -130,7 +134,8 @@ def state_to_features(game_state: dict, logger) -> np.array:
         features.append(-1)
 
     # Crates:
-    nearest_crate = findNearestItem(field, crates, position)
+    next_to_crates = find_next_to_crate(field)
+    nearest_crate = findNearestItem(field, next_to_crates, position)
     features += getItemDirection(field, nearest_crate, position)
 
     # Bomb Info:
@@ -146,6 +151,10 @@ def state_to_features(game_state: dict, logger) -> np.array:
     else:
         features.append(0)
     features.append(dropped_bomb)
+    
+    danger_score_position = dangerous_position(position, bombs)
+    features.append(danger_score_position)
+
 
     # Explosion Map:
     explosion_field = game_state['explosion_map']
