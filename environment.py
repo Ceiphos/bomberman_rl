@@ -17,7 +17,7 @@ from agents import Agent, SequentialAgentBackend
 from fallbacks import pygame
 from items import Coin, Explosion, Bomb
 
-from helper import findPath, findNearestItem
+from helper import findPath, findNearestItem, check_own_escape
 
 WorldArgs = namedtuple("WorldArgs",
                        ["no_gui", "fps", "turn_based", "update_interval", "save_replay", "replay", "make_video", "continue_without_training", "log_dir", "save_stats", "match_name", "seed", "silence_errors", "scenario"])
@@ -132,7 +132,7 @@ class GenericWorld:
     def perform_agent_action(self, agent: Agent, action: str):
         collect_coins = []
         l = 200
-        
+        agent.old_position = (agent.x, agent.y)
         # Perform the specified action if possible, wait otherwise
         if action == 'UP' and self.tile_is_free(agent.x, agent.y - 1):
             agent.y -= 1
@@ -151,6 +151,9 @@ class GenericWorld:
             self.bombs.append(Bomb((agent.x, agent.y), agent, s.BOMB_TIMER, s.BOMB_POWER, agent.bomb_sprite))
             agent.bombs_left = False
             agent.add_event(e.BOMB_DROPPED)
+            escape_possible = check_own_escape(self.arena, (agent.x, agent.y))
+            if not escape_possible:
+                agent.add_event(e.OWN_BOMB_CANT_ESCAPE)
         elif action == 'WAIT':
             agent.add_event(e.WAITED)
         else:
@@ -269,6 +272,8 @@ class GenericWorld:
             if explosion.is_dangerous():
                 for a in self.active_agents:
                     if (not a.dead) and (a.x, a.y) in explosion.blast_coords:
+                        if not (a.old_position in explosion.blast_coords):
+                            a.add_event(e.MOVED_IN_EXPLOSION)
                         agents_hit.add(a)
                         # Note who killed whom, adjust scores
                         if a is explosion.owner:
