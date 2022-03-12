@@ -17,7 +17,7 @@ from agents import Agent, SequentialAgentBackend
 from fallbacks import pygame
 from items import Coin, Explosion, Bomb
 
-from helper import findPath, findNearestItem, check_own_escape, find_next_to_crate
+from helper import findPath, findNearestItem, check_own_escape, find_next_to_crate, addPosition
 
 WorldArgs = namedtuple("WorldArgs",
                        ["no_gui", "fps", "turn_based", "update_interval", "save_replay", "replay", "make_video", "continue_without_training", "log_dir", "save_stats", "match_name", "seed", "silence_errors", "scenario"])
@@ -154,6 +154,20 @@ class GenericWorld:
             escape_possible = check_own_escape(self.arena, (agent.x, agent.y))
             if not escape_possible:
                 agent.add_event(e.OWN_BOMB_CANT_ESCAPE)
+            vectors = (
+                (0, -1),(0, -2),(0, -3),
+                (0, 1),(0, 2),(0, 3),
+                (-1, 0),(-2, 0),(-3, 0),
+                (1, 0),(2, 0),(3, 0)
+                )
+            for vec in vectors:
+                check_pos = addPosition((agent.x, agent.y), vec)
+                if (check_pos[0] in range(17) and check_pos[1] in range(17)):
+                    if (self.arena[check_pos[0],check_pos[1]]==1):
+                        agent.add_event(e.BOMB_WILL_DESTROY_CRATE)
+                    for a in self.active_agents:
+                        if (a is not agent) and (not a.dead) and ((a.x, a.y) == check_pos):
+                            agent.add_event(e.BOMB_THREATS_ENEMY)
         elif action == 'WAIT':
             agent.add_event(e.WAITED)
         else:

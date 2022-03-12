@@ -23,3 +23,5 @@ MOVED_CLOSER_TO_COIN = 'MOVED_CLOSER_TO_COIN'
 MOVED_CLOSER_TO_CRATE = 'MOVED_CLOSER_TO_CRATE'
 OWN_BOMB_CANT_ESCAPE = 'OWN_BOMB_CANT_ESCAPE' #called when agent drops bomb but cant possibly escape from explosion
 MOVED_IN_EXPLOSION = 'MOVED_IN_EXPLOSION' #called when agent leaves safe place an gets killed by explosion
+BOMB_WILL_DESTROY_CRATE = 'BOMB_WILL_DESTROY_CRATE' #called several times if bomb will destroy mutliple crates
+BOMB_THREATS_ENEMY = 'BOMB_THREATS_ENEMY' #called several time if multiple enemies in future explosion field

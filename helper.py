@@ -371,6 +371,8 @@ def find_next_to_crate(field):
             if field[x,y+v]==0:
                 next_to_crates.append((x,y+v))
     return next_to_crates
+        
+        
 
 
 if __name__ == '__main__':
