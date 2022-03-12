@@ -129,13 +129,16 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     with open("logs/score.txt", "a") as file:
         log_string = ""
         log_string += f" {self.round}"
-        log_string += f" {self.model.forest.oob_score_:.1f}"
+        log_string += f" {self.model.forest.oob_score_:.3f}"
         log_string += f" {np.mean(self.round_rewards):.1f}"
         log_string += f" {np.std(self.round_rewards):.1f}"
         log_string += f" {np.amin(self.round_rewards):.1f}"
         log_string += f" {np.amax(self.round_rewards):.1f}"
         file.write(log_string + "\n")
 
+    if np.mean(self.round_rewards) > 0:
+        with open(f"good_models/round_{self.round}_avg_{np.mean(self.round_rewards):.0f}.pt", "wb") as file:
+            pickle.dump(self.model, file)
     self.round_rewards.clear()
     self.logger.info('Model update completed')
 
@@ -154,20 +157,23 @@ def reward_from_events(self, events: List[str]) -> int:
     game_rewards = {
         e.COIN_COLLECTED: 50,
         # e.KILLED_OPPONENT: 5, KILLED_OPPONENT is a bad event as it is disconnected from action unless we use 4 step TD
-        e.INVALID_ACTION: -15,
-        e.KILLED_SELF: -100,
-        e.MOVED_UP: -0.5,
-        e.MOVED_DOWN: -0.5,
-        e.MOVED_RIGHT: -0.5,
-        e.MOVED_LEFT: -0.5,
-        e.MOVED_IN_EXPLOSION: -100,
-        e.WAITED: -10,
-        e.MOVED_CLOSER_TO_COIN: 0.5,
-        e.OWN_BOMB_CANT_ESCAPE: -20,
-        e.CRATE_DESTROYED: 10,
-        e.MOVED_CLOSER_TO_CRATE: 0.5,
-        e.BOMB_WILL_DESTROY_CRATE: 0.5,
-        e.BOMB_THREATS_ENEMY: 0.5
+        e.INVALID_ACTION: -50,
+        # e.KILLED_SELF: -200, KILLED_SELF is a bad event as it is disconnected from action unless we use 4 step TD
+        e.MOVED_UP: -2,
+        e.MOVED_DOWN: -2,
+        e.MOVED_RIGHT: -2,
+        e.MOVED_LEFT: -2,
+        e.WAITED: -2,
+        e.BOMB_DROPPED: -2,
+        # e.CRATE_DESTROYED: 50 CRATE_DESTROYED is a bad event as it is disconnected from action unless we use 4 step TD
+        # Custom Events
+        e.MOVED_IN_EXPLOSION: -200,
+        e.MOVED_CLOSER_TO_COIN: 50,
+        e.OWN_BOMB_CANT_ESCAPE: -500,
+        e.BOMB_THREATS_ENEMY: 50,
+        e.BOMB_WILL_DESTROY_CRATE: 20,
+        e.WAITED_WHILE_IN_DANGER: -200,
+        e.WAITED_WHILE_NO_BOMB_AROUND: -100,
     }
     reward_sum = 0
     for event in events:
