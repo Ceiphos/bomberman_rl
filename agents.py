@@ -86,6 +86,7 @@ class Agent:
         self.total_score = 0
         self.current_path_length_coin = 200
         self.current_path_length_crate = 3
+        self.current_bomb_distance = None
 
         self.dead = None
         self.score = None

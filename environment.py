@@ -150,6 +150,7 @@ class GenericWorld:
             self.logger.info(f'Agent <{agent.name}> drops bomb at {(agent.x, agent.y)}')
             self.bombs.append(Bomb((agent.x, agent.y), agent, s.BOMB_TIMER, s.BOMB_POWER, agent.bomb_sprite))
             agent.bombs_left = False
+            agent.current_bomb_distance = 0
             agent.add_event(e.BOMB_DROPPED)
             escape_possible = check_own_escape(self.arena, (agent.x, agent.y))
             if not escape_possible:
@@ -170,6 +171,16 @@ class GenericWorld:
                             agent.add_event(e.BOMB_THREATS_ENEMY)
         elif action == 'WAIT':
             agent.add_event(e.WAITED)
+            if self.bombs == []:
+                agent.add_event(e.WAITED_WHILE_NO_BOMB_AROUND)
+            for bomb in self.bombs:
+                blast_coords = bomb.get_blast_coords(self.arena)
+                if (agent.x, agent.y) in blast_coords:
+                    agent.add_event(e.WAITED_WHILE_IN_DANGER)
+                    break
+            else:
+                agent.add_event(e.WAITED_IN_SAFE_SPACE)
+
         else:
             agent.add_event(e.INVALID_ACTION)
             
@@ -195,6 +206,12 @@ class GenericWorld:
         if l < agent.current_path_length_crate:
             agent.add_event(e.MOVED_CLOSER_TO_CRATE)
             agent.current_path_length_crate = l
+        for bomb in self.bombs:
+            if bomb.owner is agent:
+                l = len(findPath(self.arena, (agent.x, agent.y),(bomb.x, bomb.y)))
+                if l > agent.current_bomb_distance:
+                    agent.add_event(e.ESCAPES)
+                    agent.current_bomb_distance = l
             
         
         

@@ -25,3 +25,7 @@ OWN_BOMB_CANT_ESCAPE = 'OWN_BOMB_CANT_ESCAPE' #called when agent drops bomb but 
 MOVED_IN_EXPLOSION = 'MOVED_IN_EXPLOSION' #called when agent leaves safe place an gets killed by explosion
 BOMB_WILL_DESTROY_CRATE = 'BOMB_WILL_DESTROY_CRATE' #called several times if bomb will destroy mutliple crates
 BOMB_THREATS_ENEMY = 'BOMB_THREATS_ENEMY' #called several time if multiple enemies in future explosion field
+WAITED_WHILE_NO_BOMB_AROUND = 'WAITED_WHILE_NO_BOMB_AROUND' #called when no bomb on whole field
+WAITED_WHILE_IN_DANGER = 'WAITED_WHILE_IN_DANGER' #called if agent in blast coordinates
+WAITED_IN_SAFE_SPACE = 'WAITED_IN_SAFE_SPACE' #called if bombs around but agent safe
+ESCAPES = 'ESCAPES' #called if agent increases distance to own bomb
