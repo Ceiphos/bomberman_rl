@@ -157,24 +157,24 @@ def reward_from_events(self, events: List[str]) -> int:
     game_rewards = {
         e.COIN_COLLECTED: 50,
         # e.KILLED_OPPONENT: 5, KILLED_OPPONENT is a bad event as it is disconnected from action unless we use 4 step TD
-        e.INVALID_ACTION: -50,
+        e.INVALID_ACTION: -100,
         # e.KILLED_SELF: -200, KILLED_SELF is a bad event as it is disconnected from action unless we use 4 step TD
-        e.MOVED_UP: -2,
-        e.MOVED_DOWN: -2,
-        e.MOVED_RIGHT: -2,
-        e.MOVED_LEFT: -2,
-        e.WAITED: -2,
-        e.BOMB_DROPPED: -2,
+        e.MOVED_UP: -.5,
+        e.MOVED_DOWN: -.5,
+        e.MOVED_RIGHT: -.5,
+        e.MOVED_LEFT: -.5,
+        #e.WAITED: -.5,
+        #e.BOMB_DROPPED: -2,
         # e.CRATE_DESTROYED: 50 CRATE_DESTROYED is a bad event as it is disconnected from action unless we use 4 step TD
         # Custom Events
         e.MOVED_IN_EXPLOSION: -200,
-        e.MOVED_CLOSER_TO_COIN: 50,
-        e.OWN_BOMB_CANT_ESCAPE: -500,
+        e.MOVED_CLOSER_TO_COIN: 10,
+        e.OWN_BOMB_CANT_ESCAPE: -200,
         e.BOMB_THREATS_ENEMY: 50,
-        e.BOMB_WILL_DESTROY_CRATE: 20,
-        e.WAITED_WHILE_IN_DANGER: -200,
-        e.WAITED_WHILE_NO_BOMB_AROUND: -100,
-        e.ESCAPES: 50
+        e.BOMB_WILL_DESTROY_CRATE: 10,
+        e.WAITED_WHILE_IN_DANGER: -10,
+        e.WAITED_WHILE_NO_BOMB_AROUND: -20,
+        e.ESCAPES: 100
 
     }
     reward_sum = 0

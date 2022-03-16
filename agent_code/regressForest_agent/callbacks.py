@@ -5,7 +5,7 @@ import random
 import numpy as np
 from sklearn.ensemble import RandomForestRegressor
 
-from helper import findPath, epsilonPolicy, findNearestItem, getItemDirection, addPosition, subPosition, DIRECTIONS, dangerous_position, find_next_to_crate
+from helper import findPath, epsilonPolicy, findNearestItem, getItemDirection, addPosition, subPosition, DIRECTIONS, dangerous_position, find_next_to_crate, check_own_escape, future_explosion_field
 
 
 
@@ -15,7 +15,8 @@ ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT', 'BOMB']
 
 
 MODEL_NAME = "regressForest_model.pt"
-FEATURE_SIZE = 30
+FEATURE_SIZE = 36
+escape_path = []
 
 
 class Model:
@@ -64,6 +65,7 @@ def setup(self):
     else:
         self.logger.info("Loading model from saved state.")
         with open(MODEL_NAME, "rb") as file:
+        #with open("good_models/round_2266_avg_313.pt", "rb") as file:
             self.model = pickle.load(file)
             assert self.model.forest.n_features_in_ == FEATURE_SIZE, "Featrure size of loaded model does not match"
 
@@ -111,10 +113,33 @@ def state_to_features(game_state: dict, logger) -> np.array:
 
     coins = game_state['coins']
     position = game_state['self'][-1]
-    dropped_bomb = game_state['self'][2]
+    bomb_possible = game_state['self'][-2]
     field = game_state['field']
     bombs = game_state['bombs']
+    explosion_field = game_state['explosion_map']
+    walk_field = field
 
+    # Bomb Info:
+    bomb_times = [t for _, t in bombs]
+    bomb_spots = [pos for pos, _ in bombs]
+    bomb_field = np.ones_like(field) * 10  # Initialize the bomb field with a large value, to distiguish from a bomb
+    for (x, y), t in bombs:
+        walk_field[x,y] = -1 # treat bombs like walls, because we cant walk through them
+        single_bomb_field = future_explosion_field((x,y))
+        for tile in single_bomb_field:
+            bomb_field[tile] = min(t, bomb_field[tile])
+
+    if bomb_field[position[0], position[1]] < 10:
+        features.append(1)
+    else:
+        features.append(0)
+    if bomb_possible:
+        features.append(1)
+    else:
+        features.append(0)
+    
+    danger_score_position = bomb_field[position]
+    features.append(danger_score_position)
 
     crates = []
     walls = []
@@ -126,43 +151,45 @@ def state_to_features(game_state: dict, logger) -> np.array:
                 walls.append((x, y))
 
     # walking direction to nearest coin
-    nearest_coin = findNearestItem(field, coins, position)
-    features += getItemDirection(field, nearest_coin, position)
+    nearest_coin = findNearestItem(walk_field, coins, position)
+    features += getItemDirection(walk_field, nearest_coin, position)
     if nearest_coin is not None:
-        features.append(len(findPath(field, position, nearest_coin)) - 1)
+        features.append(len(findPath(walk_field, position, nearest_coin)) - 1)
     else:
         features.append(-1)
 
     # Crates:
-    next_to_crates = find_next_to_crate(field)
-    nearest_crate = findNearestItem(field, next_to_crates, position)
-    features += getItemDirection(field, nearest_crate, position)
-
-    # Bomb Info:
-    bombs = game_state['bombs']
-    bomb_times = [t for _, t in bombs]
-    bomb_spots = [pos for pos, _ in bombs]
-    bomb_field = np.ones_like(field) * 10  # Initialize the bomb field with a large value, to distiguish from a bomb
-    for (x, y), t in bombs:
-        bomb_field[x, y] = min(t, bomb_field[x, y])
-
-    if bomb_field[position[0], position[1]] < 10:
-        features.append(1)
-    else:
-        features.append(0)
-    features.append(dropped_bomb)
+    next_to_crates = find_next_to_crate(walk_field)
+    nearest_crate = findNearestItem(walk_field, next_to_crates, position)
+    features += getItemDirection(walk_field, nearest_crate, position)
     
-    danger_score_position = dangerous_position(position, bombs)
-    features.append(danger_score_position)
 
 
     # Explosion Map:
     explosion_field = game_state['explosion_map']
+    danger_field = []
     # We treat explosions as walls, as we don't want to walk into either #TODO Check if makes sense
     for x, column in enumerate(explosion_field):
         for y, value in enumerate(column):
             if value != 0:
                 walls.append((x, y))
+                danger_field.append((x,y))
+                
+    #Escape: esc=1 if escape possible, 0 else. direction to nearest safe place (no current explosion and no threat of bombs)
+    esc = check_own_escape(walk_field, position)
+    if esc:
+        features.append(1)
+    else:
+        features.append(0)
+    for (bomb_pos, t) in bombs:
+        danger_field.append(future_explosion_field(bomb_pos))
+    free_tiles = np.argwhere(walk_field == 0)
+    safe_tiles =[]
+    for [x,y] in free_tiles:
+        if (x,y) not in danger_field:
+            safe_tiles.append((x,y))
+    nearest_safe_tile = findNearestItem(walk_field, safe_tiles, position)
+    features +=getItemDirection(walk_field, nearest_safe_tile, position)
 
     # Sourrounding
     features += surrounding(position, walls, crates, bomb_spots, [])  # TODO add agent information # 16 features

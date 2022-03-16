@@ -17,7 +17,7 @@ from agents import Agent, SequentialAgentBackend
 from fallbacks import pygame
 from items import Coin, Explosion, Bomb
 
-from helper import findPath, findNearestItem, check_own_escape, find_next_to_crate, addPosition
+from helper import findPath, findNearestItem, check_own_escape, find_next_to_crate, addPosition, DIRECTIONS, getItemDirection
 
 WorldArgs = namedtuple("WorldArgs",
                        ["no_gui", "fps", "turn_based", "update_interval", "save_replay", "replay", "make_video", "continue_without_training", "log_dir", "save_stats", "match_name", "seed", "silence_errors", "scenario"])

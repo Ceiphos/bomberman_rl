@@ -58,6 +58,7 @@ def gameStateSymmetry(gameState, symmetry):
         newGameState['self'] = agent
         newGameState['others'] = others
 
+
     def flipPosition(axis):
         bombs = gameState['bombs']
         for i, bomb in enumerate(bombs):
@@ -316,7 +317,7 @@ class epsilonPolicy:
             elif threshold <= round < self.rounds[i + 1]:
                 return self.starting_eps[i] * np.exp(-self.lambdas[i] * (round - threshold)) + self.min_eps[i]
 
-def check_own_escape(field, position):
+def check_own_escape(field, position, give_position = False):
     vector_to_safe = [(4,0),
                       (-4,0),
                       (0,4),
@@ -338,7 +339,11 @@ def check_own_escape(field, position):
         if (check_position[0] in range(17) and check_position[1] in range(17)):
             path = findPath(field, position, check_position)
             if (path != None and len(path)<5):
+                if give_position:
+                    return True, check_position
                 return True
+    if give_position:
+        return False, None
     return False
 
 def dangerous_position(position, bombs):
@@ -358,6 +363,20 @@ def dangerous_position(position, bombs):
                 danger_score = (3-t)
                 continue
     return danger_score
+
+def future_explosion_field(bomb):
+    directions = (
+        (0, -1),(0, -2),(0, -3),
+        (0, 1),(0, 2),(0, 3),
+        (-1, 0),(-2, 0),(-3, 0),
+        (1, 0),(2, 0),(3, 0)
+    )
+    field =[bomb]
+    for dir in directions:
+        check = addPosition(bomb, dir)
+        if (check[0] in range(17) and check[1] in range(17)):
+            field.append(check)
+    return field
         
 def find_next_to_crate(field):
     #return possible positions next to crates as tuples

@@ -10,4 +10,4 @@ WAITED_WHILE_BOMB_AROUND -> done
 ESCAPES -> done (only for own bomb)
 
 features:
-bomb dropped and can escape: direction of escape
+bomb dropped and can escape: direction of escape -> done
