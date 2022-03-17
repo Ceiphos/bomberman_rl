@@ -215,8 +215,6 @@ class GenericWorld:
         bombs=[]
         for bomb in self.bombs:
             bombs.append(((bomb.x,bomb.y), bomb.timer))
-            if bomb_dropped:
-                if ((bomb.x,bomb.y) == (agent.x, agent.y)):
         in_danger, danger_score = dangerous_position((agent.x,agent.y), bombs, give_danger=True)
         new_danger = False
         if in_danger or agent.been_in_danger:
