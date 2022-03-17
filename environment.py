@@ -157,6 +157,7 @@ class GenericWorld:
             agent.add_event(e.BOMB_DROPPED)
             escape_possible = check_own_escape(self.arena, (agent.x, agent.y))
             bomb_dropped = True
+            new_bomb = (agent.x,agent.y)
             if not escape_possible:
                 agent.add_event(e.OWN_BOMB_CANT_ESCAPE)
             vectors = (
@@ -211,12 +212,14 @@ class GenericWorld:
             agent.add_event(e.MOVED_CLOSER_TO_CRATE)
             agent.current_path_length_crate = l_cr
 
-        bombs = []
+        bombs=[]
         for bomb in self.bombs:
             bombs.append(((bomb.x,bomb.y), bomb.timer))
+            if bomb_dropped:
+                if ((bomb.x,bomb.y) == (agent.x, agent.y)):
         in_danger, danger_score = dangerous_position((agent.x,agent.y), bombs, give_danger=True)
         new_danger = False
-        if in_danger:
+        if in_danger or agent.been_in_danger:
             if not agent.been_in_danger:
                 new_danger = True
             agent.been_in_danger = True
@@ -237,10 +240,12 @@ class GenericWorld:
                 path = findPath(walk_field,(agent.x,agent.y), nearest_safe_tile)
                 l_s = len(path)
                 if bomb_dropped or new_danger:
-                    agent_current_path_length_safe = l_s                    
-            if l_s < agent.current_path_length_safe:
-                agent.add_event(e.ESCAPES)
-                agent.current_path_length_safe = l_s
+                    agent.current_path_length_safe = l_s
+                if l_s < agent.current_path_length_safe:
+                    agent.add_event(e.ESCAPES)
+                    agent.current_path_length_safe = l_s
+            #else: print('no_safe_tile')
+
         else:
             agent.current_path_length_safe = 4
             agent.been_in_danger = False

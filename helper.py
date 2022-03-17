@@ -347,7 +347,7 @@ def check_own_escape(field, position, give_position = False):
     return False
 
 def dangerous_position(position, bombs, give_danger = False):
-    #score between 0 and 3, 0 for no danger, 3 for death in next step 
+    #score between 0 and 4, 0 for no danger, 4 for death in next step 
     danger_score = 0
     directions = (
         (0, -1),(0, -2),(0, -3),
@@ -357,10 +357,13 @@ def dangerous_position(position, bombs, give_danger = False):
     )
     in_danger = False
     for (pos,t) in bombs:
+        if pos == position:
+            in_danger = True
+            danger_score = 1
         for dir in directions:
             danger_coord = addPosition(pos,dir)
-            if (danger_coord == position and (3-t)> danger_score):
-                danger_score = (3-t)
+            if (danger_coord == position and (4-t)> danger_score):
+                danger_score = (4-t)
                 in_danger = True
                 continue
     if give_danger:

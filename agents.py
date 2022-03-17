@@ -123,9 +123,13 @@ class Agent:
     def start_round(self):
         self.dead = False
         self.score = 0
+        self.been_in_danger = False
+
 
         self.current_path_length_coin = 200
         self.current_path_length_crate = 3
+        self.current_path_length_safe = 4
+
 
 
         self.statistics = defaultdict(int)
