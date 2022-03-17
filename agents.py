@@ -86,10 +86,11 @@ class Agent:
         self.total_score = 0
         self.current_path_length_coin = 200
         self.current_path_length_crate = 3
-        self.current_bomb_distance = None
+        self.current_path_length_safe = 4
 
         self.dead = None
         self.score = None
+        self.been_in_danger = False
 
         self.statistics = None
         self.lifetime_statistics = defaultdict(int)

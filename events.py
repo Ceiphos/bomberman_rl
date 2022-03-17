@@ -28,4 +28,4 @@ BOMB_THREATS_ENEMY = 'BOMB_THREATS_ENEMY' #called several time if multiple enemi
 WAITED_WHILE_NO_BOMB_AROUND = 'WAITED_WHILE_NO_BOMB_AROUND' #called when no bomb on whole field
 WAITED_WHILE_IN_DANGER = 'WAITED_WHILE_IN_DANGER' #called if agent in blast coordinates
 WAITED_IN_SAFE_SPACE = 'WAITED_IN_SAFE_SPACE' #called if bombs around but agent safe
-ESCAPES = 'ESCAPES' #called if agent increases distance to own bomb
+ESCAPES = 'ESCAPES' #called if agent moves closer to nearest safe tile

@@ -10,6 +10,7 @@ from time import time
 from typing import List, Tuple, Dict
 
 import numpy as np
+import copy
 
 import events as e
 import settings as s
@@ -17,7 +18,7 @@ from agents import Agent, SequentialAgentBackend
 from fallbacks import pygame
 from items import Coin, Explosion, Bomb
 
-from helper import findPath, findNearestItem, check_own_escape, find_next_to_crate, addPosition, DIRECTIONS, getItemDirection
+from helper import findPath, findNearestItem, check_own_escape, find_next_to_crate, addPosition, DIRECTIONS, getItemDirection, dangerous_position
 
 WorldArgs = namedtuple("WorldArgs",
                        ["no_gui", "fps", "turn_based", "update_interval", "save_replay", "replay", "make_video", "continue_without_training", "log_dir", "save_stats", "match_name", "seed", "silence_errors", "scenario"])
@@ -131,8 +132,11 @@ class GenericWorld:
 
     def perform_agent_action(self, agent: Agent, action: str):
         collect_coins = []
-        l = 200
+        l_co = 200 #values if no nearest coin, crate or safe tile is found
+        l_cr = 200
+        l_s = 4
         agent.old_position = (agent.x, agent.y)
+        bomb_dropped = False
         # Perform the specified action if possible, wait otherwise
         if action == 'UP' and self.tile_is_free(agent.x, agent.y - 1):
             agent.y -= 1
@@ -150,9 +154,9 @@ class GenericWorld:
             self.logger.info(f'Agent <{agent.name}> drops bomb at {(agent.x, agent.y)}')
             self.bombs.append(Bomb((agent.x, agent.y), agent, s.BOMB_TIMER, s.BOMB_POWER, agent.bomb_sprite))
             agent.bombs_left = False
-            agent.current_bomb_distance = 0
             agent.add_event(e.BOMB_DROPPED)
             escape_possible = check_own_escape(self.arena, (agent.x, agent.y))
+            bomb_dropped = True
             if not escape_possible:
                 agent.add_event(e.OWN_BOMB_CANT_ESCAPE)
             vectors = (
@@ -192,27 +196,54 @@ class GenericWorld:
             nearest_coin = findNearestItem(self.arena, collect_coins, (agent.x, agent.y))
             if nearest_coin != None:
                 path = findPath(self.arena,(agent.x,agent.y), nearest_coin)
-                l = len(path)
-        if l < agent.current_path_length_coin:
+                l_co = len(path)
+        if l_co < agent.current_path_length_coin:
             agent.add_event(e.MOVED_CLOSER_TO_COIN)
-            agent.current_path_length_coin = l
+            agent.current_path_length_coin = l_co
 
         next_to_crates = find_next_to_crate(self.arena)
         if len(next_to_crates)>0:        
             nearest_crate = findNearestItem(self.arena, next_to_crates, (agent.x, agent.y))
             if nearest_crate != None:
                 path = findPath(self.arena,(agent.x,agent.y), nearest_crate)
-                l = len(path)
-        if l < agent.current_path_length_crate:
+                l_cr = len(path)
+        if l_cr < agent.current_path_length_crate:
             agent.add_event(e.MOVED_CLOSER_TO_CRATE)
-            agent.current_path_length_crate = l
+            agent.current_path_length_crate = l_cr
+
+        bombs = []
         for bomb in self.bombs:
-            if bomb.owner is agent:
-                l = len(findPath(self.arena, (agent.x, agent.y),(bomb.x, bomb.y)))
-                if l > agent.current_bomb_distance:
-                    agent.add_event(e.ESCAPES)
-                    agent.current_bomb_distance = l
-            
+            bombs.append(((bomb.x,bomb.y), bomb.timer))
+        in_danger, danger_score = dangerous_position((agent.x,agent.y), bombs, give_danger=True)
+        new_danger = False
+        if in_danger:
+            if not agent.been_in_danger:
+                new_danger = True
+            agent.been_in_danger = True
+            danger_field = []
+            walk_field = copy.copy(self.arena) #TODO: entweder anders kopie erstellen oder modul importieren!            
+            for bomb in self.bombs:
+                walk_field[bomb.x,bomb.y]= -1
+                blast_coords = bomb.get_blast_coords(self.arena)
+                danger_field.append((bomb.x, bomb.y))
+                danger_field.extend(blast_coords)
+            free_tiles = np.argwhere(walk_field == 0)
+            safe_tiles =[]
+            for [x,y] in free_tiles:
+                if (x,y) not in danger_field:
+                    safe_tiles.append((x,y))
+            nearest_safe_tile = findNearestItem(walk_field, safe_tiles, (agent.x,agent.y))
+            if nearest_safe_tile != None:
+                path = findPath(walk_field,(agent.x,agent.y), nearest_safe_tile)
+                l_s = len(path)
+                if bomb_dropped or new_danger:
+                    agent_current_path_length_safe = l_s                    
+            if l_s < agent.current_path_length_safe:
+                agent.add_event(e.ESCAPES)
+                agent.current_path_length_safe = l_s
+        else:
+            agent.current_path_length_safe = 4
+            agent.been_in_danger = False
         
         
 
