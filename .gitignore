@@ -114,3 +114,6 @@ results/
 
 #IDE stuff
 .vscode
+
+# Saved models
+*.pt
