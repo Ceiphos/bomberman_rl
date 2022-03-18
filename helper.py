@@ -370,19 +370,28 @@ def dangerous_position(position, bombs, give_danger = False):
         return in_danger, danger_score
     return danger_score
 
-def future_explosion_field(bomb):
-    directions = (
-        (0, -1),(0, -2),(0, -3),
-        (0, 1),(0, 2),(0, 3),
-        (-1, 0),(-2, 0),(-3, 0),
-        (1, 0),(2, 0),(3, 0)
-    )
-    field =[bomb]
+def future_explosion_field(bomb, field):
+    #directions_1 = (
+    #    (0, -1),(0, -2),(0, -3),
+    #    (0, 1),(0, 2),(0, 3),
+    #    (-1, 0),(-2, 0),(-3, 0),
+    #    (1, 0),(2, 0),(3, 0)
+    #)
+    directions = ((1,0),(-1,0),(0,1),(0,-1))
+    bomb_field =[bomb]
     for dir in directions:
-        check = addPosition(bomb, dir)
-        if (check[0] in range(17) and check[1] in range(17)):
-            field.append(check)
-    return field
+        i=0
+        check = bomb
+        while i<3:
+            check = addPosition(check, dir)
+            i +=1
+            if (check[0] in range(17) and check[1] in range(17)):
+                if field[check] == -1:
+                    i=3
+                    continue
+                else:
+                    bomb_field.append(check)
+    return bomb_field
         
 def find_next_to_crate(field):
     #return possible positions next to crates as tuples

@@ -8,6 +8,7 @@ MOVED_IN_DANGER
 NOT_MOVING_WHILE_IN_DANGER -> done (also wait in safe space)
 WAITED_WHILE_BOMB_AROUND -> done
 ESCAPES -> done (only for own bomb)
+MOVES_IN_WRONG_DIRECTION
 
 features:
 bomb dropped and can escape: direction of escape -> done

@@ -15,7 +15,7 @@ ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT', 'BOMB']
 
 
 MODEL_NAME = "regressForest_model.pt"
-FEATURE_SIZE = 36
+FEATURE_SIZE = 38
 escape_path = []
 
 
@@ -62,10 +62,11 @@ def setup(self):
         # self.model = weights / weights.sum()
         self.model = Model()
         self.eps = epsilonPolicy([0, 1000, 2000], [1, 0.7, 0.3], [1 / 300, 1 / 300, 1 / 200], [0.05] * 3)
+        #self.eps = epsilonPolicy([0, 10000, 20000, 30000, 40000], [1, 0.8, 0.6, 0.4, 0.2], [1 / 400, 1 / 400, 1 / 300, 1/300, 1/200], [0.05] * 5)
     else:
         self.logger.info("Loading model from saved state.")
         with open(MODEL_NAME, "rb") as file:
-        #with open("good_models/round_2266_avg_313.pt", "rb") as file:
+        #with open("good_models/round_1650_avg_680.pt", "rb") as file:
             self.model = pickle.load(file)
             assert self.model.forest.n_features_in_ == FEATURE_SIZE, "Featrure size of loaded model does not match"
 
@@ -117,6 +118,8 @@ def state_to_features(game_state: dict, logger) -> np.array:
     field = game_state['field']
     bombs = game_state['bombs']
     explosion_field = game_state['explosion_map']
+    agents = game_state['others']
+    enemy_positions = [x[-1] for x in agents]
     walk_field = field
 
     # Bomb Info:
@@ -125,18 +128,31 @@ def state_to_features(game_state: dict, logger) -> np.array:
     bomb_field = np.ones_like(field) * 10  # Initialize the bomb field with a large value, to distiguish from a bomb
     for (x, y), t in bombs:
         walk_field[x,y] = -1 # treat bombs like walls, because we cant walk through them
-        single_bomb_field = future_explosion_field((x,y))
+        single_bomb_field = future_explosion_field((x,y), field)
         for tile in single_bomb_field:
             bomb_field[tile] = min(t, bomb_field[tile])
 
-    if bomb_field[position[0], position[1]] < 10:
+    if bomb_field[position[0], position[1]] < 10: #if in bomb field, 1, else 0
         features.append(1)
     else:
         features.append(0)
     if bomb_possible:
-        features.append(1)
+        features.append(1) #if can throw bomb 1, else 0
     else:
         features.append(0)
+        
+    #bomb power (how many crates and enemies would be endangered if bomb dropped)
+    tiles_to_check = future_explosion_field(position, field)
+    destroyable_crates = 0
+    threatened_enemy = 0
+    for tile in tiles_to_check:
+        if field[tile]==1:
+            destroyable_crates+=1
+        elif tile in enemy_positions:
+            threatened_enemy +=1
+    features.append(destroyable_crates)
+    features.append(threatened_enemy)
+        
     
     danger_score_position = bomb_field[position]
     features.append(danger_score_position)
@@ -182,7 +198,7 @@ def state_to_features(game_state: dict, logger) -> np.array:
     else:
         features.append(0)
     for (bomb_pos, t) in bombs:
-        danger_field.append(future_explosion_field(bomb_pos))
+        danger_field.append(future_explosion_field(bomb_pos, field))
     free_tiles = np.argwhere(walk_field == 0)
     safe_tiles =[]
     for [x,y] in free_tiles:
