@@ -62,7 +62,6 @@ def setup(self):
         # self.model = weights / weights.sum()
         self.model = Model()
         self.eps = epsilonPolicy([0, 1000, 2000], [1, 0.7, 0.3], [1 / 300, 1 / 300, 1 / 200], [0.05] * 3)
-        #self.eps = epsilonPolicy([0, 10000, 20000, 30000, 40000], [1, 0.8, 0.6, 0.4, 0.2], [1 / 400, 1 / 400, 1 / 300, 1/300, 1/200], [0.05] * 5)
     else:
         self.logger.info("Loading model from saved state.")
         with open(MODEL_NAME, "rb") as file:
@@ -147,9 +146,9 @@ def state_to_features(game_state: dict, logger) -> np.array:
     threatened_enemy = 0
     for tile in tiles_to_check:
         if field[tile]==1:
-            destroyable_crates+=1
+            destroyable_crates += 1
         elif tile in enemy_positions:
-            threatened_enemy +=1
+            threatened_enemy += 1
     features.append(destroyable_crates)
     features.append(threatened_enemy)
         

@@ -18,8 +18,8 @@ Transition = namedtuple('Transition',
 # Hyper parameters
 TRAIN_EVERY_N_GAMES = 10
 
-TRAIN_BATCH_SIZE = 500
-TRANSITION_HISTORY_SIZE = 10000  # keep only ... last transitions
+TRAIN_BATCH_SIZE = 10000
+TRANSITION_HISTORY_SIZE = 100000  # keep only ... last transitions
 ALPHA = 0.1
 GAMMA = 0.99
 
@@ -162,19 +162,20 @@ def reward_from_events(self, events: List[str]) -> int:
         e.MOVED_UP: -.5,
         e.MOVED_DOWN: -.5,
         e.MOVED_RIGHT: -.5,
-        e.MOVED_LEFT: -.5,
-        #e.WAITED: -.5,
+        e.MOVED_LEFT: --5,
+        #e.WAITED: -2,
         #e.BOMB_DROPPED: -2,
         # e.CRATE_DESTROYED: 50 CRATE_DESTROYED is a bad event as it is disconnected from action unless we use 4 step TD
         # Custom Events
         e.MOVED_IN_EXPLOSION: -200,
         e.MOVED_CLOSER_TO_COIN: 10,
+        e.MOVED_CLOSER_TO_CRATE: 10,
         e.OWN_BOMB_CANT_ESCAPE: -200,
         e.BOMB_THREATS_ENEMY: 50,
-        e.BOMB_WILL_DESTROY_CRATE: 10,
-        e.WAITED_WHILE_IN_DANGER: -10,
+        e.BOMB_WILL_DESTROY_CRATE: 5,
+        e.WAITED_WHILE_IN_DANGER: -20,
         e.WAITED_WHILE_NO_BOMB_AROUND: -20,
-        e.ESCAPES: 100
+        e.ESCAPES: 60
 
     }
     reward_sum = 0

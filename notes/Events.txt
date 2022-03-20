@@ -12,3 +12,4 @@ MOVES_IN_WRONG_DIRECTION
 
 features:
 bomb dropped and can escape: direction of escape -> done
+potence of bomb -> done

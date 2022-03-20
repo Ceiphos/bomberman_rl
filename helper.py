@@ -338,7 +338,7 @@ def check_own_escape(field, position, give_position = False):
         check_position = addPosition(position, vec)
         if (check_position[0] in range(17) and check_position[1] in range(17)):
             path = findPath(field, position, check_position)
-            if (path != None and len(path)<5):
+            if (path != None and len(path)<6):
                 if give_position:
                     return True, check_position
                 return True
@@ -347,7 +347,7 @@ def check_own_escape(field, position, give_position = False):
     return False
 
 def dangerous_position(position, bombs, give_danger = False):
-    #score between 0 and 4, 0 for no danger, 4 for death in next step 
+    #score between 0 and 3, 0 for no danger, 3 for death in next step 
     danger_score = 0
     directions = (
         (0, -1),(0, -2),(0, -3),
@@ -362,8 +362,8 @@ def dangerous_position(position, bombs, give_danger = False):
             danger_score = 1
         for dir in directions:
             danger_coord = addPosition(pos,dir)
-            if (danger_coord == position and (4-t)> danger_score):
-                danger_score = (4-t)
+            if (danger_coord == position and (3-t)> danger_score):
+                danger_score = (3-t)
                 in_danger = True
                 continue
     if give_danger:
@@ -371,12 +371,7 @@ def dangerous_position(position, bombs, give_danger = False):
     return danger_score
 
 def future_explosion_field(bomb, field):
-    #directions_1 = (
-    #    (0, -1),(0, -2),(0, -3),
-    #    (0, 1),(0, 2),(0, 3),
-    #    (-1, 0),(-2, 0),(-3, 0),
-    #    (1, 0),(2, 0),(3, 0)
-    #)
+    #gives coordinates of explosion from bomb taking into account stone walls
     directions = ((1,0),(-1,0),(0,1),(0,-1))
     bomb_field =[bomb]
     for dir in directions:

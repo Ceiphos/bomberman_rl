@@ -29,3 +29,4 @@ WAITED_WHILE_NO_BOMB_AROUND = 'WAITED_WHILE_NO_BOMB_AROUND' #called when no bomb
 WAITED_WHILE_IN_DANGER = 'WAITED_WHILE_IN_DANGER' #called if agent in blast coordinates
 WAITED_IN_SAFE_SPACE = 'WAITED_IN_SAFE_SPACE' #called if bombs around but agent safe
 ESCAPES = 'ESCAPES' #called if agent moves closer to nearest safe tile
+MOVED_IN_DEAD_END = 'MOVED_IN_DEAD_END' #called if agent moves in a way that no escape is possible
