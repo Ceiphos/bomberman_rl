@@ -1,14 +1,20 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+import pickle
 import sys
 sys.path.append(os.getcwd())
 
 import helper
 
+MODEL_NAME = "regressForest_model.pt"
+
 dir_path = os.path.dirname(os.path.realpath(__file__))
 rounds, score, rewards, rewards_std, min_rewards, max_rewards = np.loadtxt(dir_path + "/logs/score.txt", unpack=True)
 epsilon = np.where(rounds < 1000, np.exp(-1 / 300 * rounds) + 0.05, 0.7 * np.exp(-1 / 250 * (rounds - 1000)))
+
+with open("agent_code/regressForest_agent/" + MODEL_NAME, "rb") as file:
+    model = pickle.load(file)
 
 
 def movingaverage(interval, window_size):
@@ -31,11 +37,9 @@ secax.tick_params(axis='y', labelcolor='tab:orange')
 secax.plot(rounds, epsilon, color="tab:orange")
 
 plt.subplot(132)
-plt.errorbar(rounds, rewards, yerr=rewards_std, elinewidth=0.5)
-secax = plt.gca().twinx()
-secax.set_ylim(0, 1)
-secax.tick_params(axis='y', labelcolor='tab:orange')
-secax.plot(rounds, epsilon, color="tab:orange")
+plt.fill_between(rounds, rewards + rewards_std, rewards - rewards_std, alpha=0.5)
+plt.plot(rounds, rewards)
+plt.axhline(0, linestyle='--', color='black')
 
 plt.subplot(133)
 plt.plot(rounds, min_rewards, linewidth=0.5)
@@ -44,10 +48,7 @@ plt.plot(rounds[5:-4], avg, color="tab:blue")
 plt.plot(rounds, max_rewards, linewidth=0.5, color="tab:green")
 avg = movingaverage(max_rewards, 10)
 plt.plot(rounds[5:-4], avg, color="tab:green")
-secax = plt.gca().twinx()
-secax.set_ylim(0, 1)
-secax.tick_params(axis='y', labelcolor='tab:orange')
-secax.plot(rounds, epsilon, color="tab:orange")
+plt.axhline(0, linestyle='--', color='black')
 
 plt.tight_layout()
 plt.show()

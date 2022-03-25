@@ -6,20 +6,20 @@ from collections import namedtuple, deque
 import os
 import pickle
 import random
+import time
+import datetime
 from typing import List
 import numpy as np
 np.seterr(all='raise')
 
-
-# This is only an example!
 Transition = namedtuple('Transition',
                         ('state', 'action', 'next_state', 'reward'))
 
 # Hyper parameters
-TRAIN_EVERY_N_GAMES = 10
+TRAIN_EVERY_N_GAMES = 20
 
 TRAIN_BATCH_SIZE = 10000
-TRANSITION_HISTORY_SIZE = 100000  # keep only ... last transitions
+TRANSITION_HISTORY_SIZE = 500000  # keep only ... last transitions
 ALPHA = 0.1
 GAMMA = 0.99
 
@@ -41,6 +41,10 @@ def setup_training(self):
     self.round = 0
     if os.path.exists("logs/score.txt"):
         os.remove("logs/score.txt")
+
+    self.model_dir = datetime.datetime.now().isoformat(timespec='minutes')
+    if not os.path.exists(f"good_models/{self.model_dir}"):
+        os.mkdir(f"good_models/{self.model_dir}")
 
 
 def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_state: dict, events: List[str]):
@@ -136,8 +140,8 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
         log_string += f" {np.amax(self.round_rewards):.1f}"
         file.write(log_string + "\n")
 
-    if np.mean(self.round_rewards) > 0:
-        with open(f"good_models/round_{self.round}_avg_{np.mean(self.round_rewards):.0f}.pt", "wb") as file:
+    if np.mean(self.round_rewards) > 300:
+        with open(f"good_models/{self.model_dir}/round_{self.round}_avg_{np.mean(self.round_rewards):.0f}.pt", "wb") as file:
             pickle.dump(self.model, file)
     self.round_rewards.clear()
     self.logger.info('Model update completed')
@@ -155,27 +159,26 @@ def reward_from_events(self, events: List[str]) -> int:
     certain behavior.
     """
     game_rewards = {
-        e.COIN_COLLECTED: 50,
+        e.COIN_COLLECTED: 100,
         # e.KILLED_OPPONENT: 5, KILLED_OPPONENT is a bad event as it is disconnected from action unless we use 4 step TD
         e.INVALID_ACTION: -100,
         # e.KILLED_SELF: -200, KILLED_SELF is a bad event as it is disconnected from action unless we use 4 step TD
-        e.MOVED_UP: -.5,
-        e.MOVED_DOWN: -.5,
-        e.MOVED_RIGHT: -.5,
-        e.MOVED_LEFT: --5,
-        #e.WAITED: -2,
-        #e.BOMB_DROPPED: -2,
+        e.MOVED_UP: -5,
+        e.MOVED_DOWN: -5,
+        e.MOVED_RIGHT: -5,
+        e.MOVED_LEFT: -5,
+        e.WAITED: -10,
+        e.BOMB_DROPPED: -50,
         # e.CRATE_DESTROYED: 50 CRATE_DESTROYED is a bad event as it is disconnected from action unless we use 4 step TD
         # Custom Events
         e.MOVED_IN_EXPLOSION: -200,
-        e.MOVED_CLOSER_TO_COIN: 10,
-        e.MOVED_CLOSER_TO_CRATE: 10,
-        e.OWN_BOMB_CANT_ESCAPE: -200,
-        e.BOMB_THREATS_ENEMY: 50,
-        e.BOMB_WILL_DESTROY_CRATE: 5,
-        e.WAITED_WHILE_IN_DANGER: -20,
-        e.WAITED_WHILE_NO_BOMB_AROUND: -20,
-        e.ESCAPES: 60
+        e.MOVED_CLOSER_TO_COIN: 50,
+        e.OWN_BOMB_CANT_ESCAPE: -400,
+        e.BOMB_THREATS_ENEMY: 100,
+        e.BOMB_WILL_DESTROY_CRATE: 50,
+        e.WAITED_WHILE_IN_DANGER: -100,
+        e.WAITED_WHILE_NO_BOMB_AROUND: -100,
+        e.ESCAPES: 100,
 
     }
     reward_sum = 0

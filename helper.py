@@ -58,7 +58,6 @@ def gameStateSymmetry(gameState, symmetry):
         newGameState['self'] = agent
         newGameState['others'] = others
 
-
     def flipPosition(axis):
         bombs = gameState['bombs']
         for i, bomb in enumerate(bombs):
@@ -317,28 +316,29 @@ class epsilonPolicy:
             elif threshold <= round < self.rounds[i + 1]:
                 return self.starting_eps[i] * np.exp(-self.lambdas[i] * (round - threshold)) + self.min_eps[i]
 
-def check_own_escape(field, position, give_position = False):
-    vector_to_safe = [(4,0),
-                      (-4,0),
-                      (0,4),
-                      (0,-4),
-                      (1,1),
-                      (1,-1),
-                      (-1,1),
-                      (-1,-1),
-                      (2,1),
-                      (2,-1),
-                      (-2,1),
-                      (-2,-1),
-                      (1,2),
-                      (-1,2),
-                      (1,-2),
-                      (-1,-2)]
+
+def check_own_escape(field, position, give_position=False):
+    vector_to_safe = [(4, 0),
+                      (-4, 0),
+                      (0, 4),
+                      (0, -4),
+                      (1, 1),
+                      (1, -1),
+                      (-1, 1),
+                      (-1, -1),
+                      (2, 1),
+                      (2, -1),
+                      (-2, 1),
+                      (-2, -1),
+                      (1, 2),
+                      (-1, 2),
+                      (1, -2),
+                      (-1, -2)]
     for vec in vector_to_safe:
         check_position = addPosition(position, vec)
         if (check_position[0] in range(17) and check_position[1] in range(17)):
             path = findPath(field, position, check_position)
-            if (path != None and len(path)<6):
+            if (path != None and len(path) < 6):
                 if give_position:
                     return True, check_position
                 return True
@@ -346,62 +346,62 @@ def check_own_escape(field, position, give_position = False):
         return False, None
     return False
 
-def dangerous_position(position, bombs, give_danger = False):
-    #score between 0 and 3, 0 for no danger, 3 for death in next step 
+
+def dangerous_position(position, bombs, give_danger=False):
+    # score between 0 and 4, 0 for no danger, 4 for death in next step
     danger_score = 0
     directions = (
-        (0, -1),(0, -2),(0, -3),
-        (0, 1),(0, 2),(0, 3),
-        (-1, 0),(-2, 0),(-3, 0),
-        (1, 0),(2, 0),(3, 0)
+        (0, -1), (0, -2), (0, -3),
+        (0, 1), (0, 2), (0, 3),
+        (-1, 0), (-2, 0), (-3, 0),
+        (1, 0), (2, 0), (3, 0)
     )
     in_danger = False
-    for (pos,t) in bombs:
+    for (pos, t) in bombs:
         if pos == position:
             in_danger = True
             danger_score = 1
         for dir in directions:
-            danger_coord = addPosition(pos,dir)
-            if (danger_coord == position and (3-t)> danger_score):
-                danger_score = (3-t)
+            danger_coord = addPosition(pos, dir)
+            if (danger_coord == position and (3 - t) > danger_score):
+                danger_score = (3 - t)
                 in_danger = True
                 continue
     if give_danger:
         return in_danger, danger_score
     return danger_score
 
+
 def future_explosion_field(bomb, field):
-    #gives coordinates of explosion from bomb taking into account stone walls
-    directions = ((1,0),(-1,0),(0,1),(0,-1))
-    bomb_field =[bomb]
+    directions = ((1, 0), (-1, 0), (0, 1), (0, -1))
+    bomb_field = [bomb]
     for dir in directions:
-        i=0
+        i = 0
         check = bomb
-        while i<3:
+        while i < 3:
             check = addPosition(check, dir)
-            i +=1
+            i += 1
             if (check[0] in range(17) and check[1] in range(17)):
                 if field[check] == -1:
-                    i=3
+                    i = 3
                     continue
                 else:
                     bomb_field.append(check)
     return bomb_field
-        
+
+
 def find_next_to_crate(field):
-    #return possible positions next to crates as tuples
+    # return possible positions next to crates as tuples
     next_to_crates = []
     ind_crates = np.argwhere(field == 1)
     for x, y in ind_crates:
-        for u in [-1,1]:
-            if field[x+u,y]==0:
-                next_to_crates.append((x+u,y))
-        for v in[-1,1]:
-            if field[x,y+v]==0:
-                next_to_crates.append((x,y+v))
+        for u in [-1, 1]:
+            if field[x + u, y] == 0:
+                next_to_crates.append((x + u, y))
+        for v in [-1, 1]:
+            if field[x, y + v] == 0:
+                next_to_crates.append((x, y + v))
     return next_to_crates
-        
-        
 
 
 if __name__ == '__main__':
