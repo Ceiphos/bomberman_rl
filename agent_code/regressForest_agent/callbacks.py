@@ -14,7 +14,7 @@ ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT', 'BOMB']
 
 
 MODEL_NAME = "regressForest_model.pt"
-FEATURE_SIZE = 36
+FEATURE_SIZE = 32
 escape_path = []
 
 
@@ -159,6 +159,7 @@ def state_to_features(game_state: dict, logger) -> np.array:
                 crates.append((x, y))
             elif value == -1:
                 walls.append((x, y))
+    walls.extend(bomb_spots)  # we cant walk into bombs
 
     # walking direction to nearest coin
     nearest_coin = findNearestItem(walk_field, coins, position)
@@ -210,12 +211,12 @@ def state_to_features(game_state: dict, logger) -> np.array:
     features += getItemDirection(walk_field, nearest_safe_tile, position)
 
     # Sourrounding
-    features += surrounding(position, walls, crates, bomb_spots, [])  # TODO add agent information # 16 features
+    features += surrounding(position, walls, crates, enemy_positions)  # 12 features
     assert len(features) == FEATURE_SIZE
     return np.array(features)
 
 
-def surrounding(position, walls, crates, bombs, agents):
+def surrounding(position, walls, crates, agents):
     directions = (
         (0, -1),
         (0, 1),
@@ -226,14 +227,12 @@ def surrounding(position, walls, crates, bombs, agents):
     for dir in directions:
         s = addPosition(position, dir)
         if s in walls:
-            result += [1, 0, 0, 0]
+            result += [1, 0, 0]
         elif s in crates:
-            result += [0, 1, 0, 0]
-        elif s in bombs:
-            result += [0, 0, 1, 0]
+            result += [0, 1, 0]
         elif s in agents:
-            result += [0, 0, 0, 1]
+            result += [0, 0, 1]
         else:
-            result += [0, 0, 0, 0]
+            result += [0, 0, 0]
 
     return result
