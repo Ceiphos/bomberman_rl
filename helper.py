@@ -13,14 +13,48 @@ DIRECTIONS = {
 
 
 def addPosition(a, b):
+    """Adds tuples a and b elementwise and returns a new tuple with the result
+
+    Parameters
+    ----------
+    a : tuple (2dim)
+    b : tuple (2dim)
+
+    Returns
+    -------
+    tuple (2dim)
+    """
     return (a[0] + b[0], a[1] + b[1])
 
 
 def subPosition(a, b):
+    """Subtracts tuples a and b elementwise and returns a new tuple with the result
+
+    Parameters
+    ----------
+    a : tuple (2dim)
+    b : tuple (2dim)
+
+    Returns
+    -------
+    tuple (2dim)
+    """
     return (a[0] - b[0], a[1] - b[1])
 
 
 def gameStateSymmetry(gameState, symmetry):
+    """Performs the symmetry transformation on the gameState and returns the transformed state
+
+    Parameters
+    ----------
+    gameState : dic
+    symmetry : str
+
+    Returns
+    -------
+    newGameState : dic
+        The resulting game state after the symmetry was applied
+    """
     assert symmetry in SYMMETRIES
 
     if (symmetry == 'id'):
@@ -127,6 +161,18 @@ def gameStateSymmetry(gameState, symmetry):
 
 
 def actionSym(action, symmetry):
+    """Performs the symmetry transformation on the action and returns the transformed action
+
+    Parameters
+    ----------
+    action : str
+    symmetry : str
+
+    Returns
+    -------
+    symAction : str
+        The resulting action after the symmetry was applied
+    """
     assert symmetry in SYMMETRIES
     symAction = ['UP', 'RIGHT', 'DOWN', 'LEFT']
 
@@ -152,10 +198,20 @@ def actionSym(action, symmetry):
 
 
 def findPath(field, start, end):
-    """ 
-    Calculate path from start to end in field as a list of postions
+    """Calculate path from start to end in field as a list of postions
 
     Uses A* algortihm
+
+    Parameters
+    ----------
+    field : 2dim ndarray
+    start : 2dim tuple
+    end : 2dim tuple
+
+    Retruns
+    -------
+    path : List of 2dim tuples
+        path contains the positions along the calculated path, including start and end
     """
     assert start is not None
     assert end is not None
@@ -238,6 +294,20 @@ def findPath(field, start, end):
 
 
 def getItemDirection(field, item, position):
+    """Calculates the direction of the item from the curren position
+
+    Performs a path finding to the item and calculates the direction from the first step
+
+    Parameters
+    ----------
+    field : 2dim ndarray
+    item : 2dim tuple
+    position : 2dim tuple
+
+    Returns
+    direction : List
+        The one-hot encoded direction to the item
+    """
     assert position is not None
     if item is None:
         return DIRECTIONS['NULL']
@@ -263,6 +333,19 @@ def getItemDirection(field, item, position):
 
 
 def findNNearestItems(field, items, position, n):
+    """Performs a breadth first search to find the n closest members of items
+
+    Parameters
+    ----------
+    field : 2dim ndarray
+    items : List of 2dim tuples
+    position : 2dim tuple
+    n : int
+
+    Returns
+    -------
+    nearestItems : List of 2dim tuples
+    """
     if (len(items) == 0):
         return None
     visited = []
@@ -293,6 +376,18 @@ def findNNearestItems(field, items, position, n):
 
 
 def findNearestItem(field, items, position):
+    """Finds the closest members of items using a call to findNNearestItems
+
+    Parameters
+    ----------
+    field : 2dim ndarray
+    items : List of 2dim tuples
+    position : 2dim tuple
+
+    Returns
+    -------
+    nearestItem : 2dim tuple
+    """
     nearestItems = findNNearestItems(field, items, position, 1)
     if nearestItems is not None:
         return nearestItems[0]
@@ -301,6 +396,23 @@ def findNearestItem(field, items, position):
 
 
 class epsilonPolicy:
+    """Simple interface to provide epsilon values as a function of the round
+
+    The epsilons are calculated using an exponential decay with specified parameters
+    Multiple decays starting at different rounds can be specified
+
+    Parameters
+    ----------
+    rounds : List of int
+        The rounds where the different decays start, must be 0 in the 0th entry
+    starting_eps : List of float
+        The epsilon values to start the decay, the corresponding min_eps is added
+    lambdas : List of float
+        The decay speeds
+    min_eps : List of float
+        The minimal value each decay converges to
+    """
+
     def __init__(self, rounds, starting_eps, lambdas, min_eps):
         assert len(rounds) == len(starting_eps) == len(lambdas) == len(min_eps)
         assert rounds[0] == 0
@@ -310,6 +422,19 @@ class epsilonPolicy:
         self.min_eps = min_eps
 
     def epsilon(self, round):
+        """Returns the epsilon value for the given round
+
+        This is calculated by eps = eps_0 * exp(-(round-round_0)*lambda) + eps_min
+        where eps_0, lambda, round_0 and eps_min are the corresponding parameters accroding to the rounds list
+
+        Parameters
+        ----------
+        round : int
+
+        Returns
+        -------
+        epsilon : float
+        """
         for i, threshold in enumerate(self.rounds):
             if (i == len(self.rounds) - 1):
                 return self.starting_eps[i] * np.exp(-self.lambdas[i] * (round - threshold)) + self.min_eps[i]
@@ -317,7 +442,20 @@ class epsilonPolicy:
                 return self.starting_eps[i] * np.exp(-self.lambdas[i] * (round - threshold)) + self.min_eps[i]
 
 
-def check_own_escape(field, position, give_position=False):
+def check_own_escape(field, position):
+    """Checks wheter a safe spot can be reached from the current position if a bomb is dropped
+
+    Iterates to all possible safe spots and returns true if one can be reached by a path  in the next 4 steps
+
+    Parameters
+    ----------
+    field : 2dim ndarayy
+    position : 2dim tuple
+
+    Returns
+    -------
+    safe : bool
+    """
     vector_to_safe = [(4, 0),
                       (-4, 0),
                       (0, 4),
@@ -334,20 +472,32 @@ def check_own_escape(field, position, give_position=False):
                       (-1, 2),
                       (1, -2),
                       (-1, -2)]
+    # Iterate through all possible safe spots and check wheter a short enough path exists
     for vec in vector_to_safe:
         check_position = addPosition(position, vec)
         if (check_position[0] in range(17) and check_position[1] in range(17)):
             path = findPath(field, position, check_position)
-            if (path != None and len(path) < 6):
-                if give_position:
-                    return True, check_position
+            if (path != None and len(path) <= 5):
                 return True
-    if give_position:
-        return False, None
-    return False
+    else:
+        return False
 
 
-def dangerous_position(position, bombs, give_danger=False):
+def dangerous_position(position, bombs):
+    """Calculates a danger score for the position by the given bombs
+
+    The score is between 0 and 4 with 0 meaning no danger and 4 death in the next step
+
+    Parameters
+    ----------
+    position : 2dim tuple
+    bombs: List of 2dim tuple
+
+    Returns
+    -------
+    in_danger : bool
+    danger_score : int
+    """
     # score between 0 and 4, 0 for no danger, 4 for death in next step
     danger_score = 0
     directions = (
@@ -360,38 +510,54 @@ def dangerous_position(position, bombs, give_danger=False):
     for (pos, t) in bombs:
         if pos == position:
             in_danger = True
-            danger_score = 1
+            danger_score = max(danger_score, 4 - t)  # t is between 0 and 3
         for dir in directions:
             danger_coord = addPosition(pos, dir)
-            if (danger_coord == position and (3 - t) > danger_score):
-                danger_score = (3 - t)
+            if (danger_coord == position):
+                danger_score = max(danger_score, 4 - t)
                 in_danger = True
                 continue
-    if give_danger:
-        return in_danger, danger_score
-    return danger_score
+    return in_danger, danger_score
 
 
 def future_explosion_field(bomb, field):
+    """Calculates the positions that will contain a explosion in the future of the given bomb
+
+    Parameters
+    ----------
+    bomb : 2dim tuple
+    field: 2dim ndarray
+
+    Returns
+    -------
+    future_explosions : List of 2dim tuple
+    """
     directions = ((1, 0), (-1, 0), (0, 1), (0, -1))
-    bomb_field = [bomb]
+    future_explosions = [bomb]
     for dir in directions:
-        i = 0
         check = bomb
-        while i < 3:
+        for i in range(3):
             check = addPosition(check, dir)
-            i += 1
             if (check[0] in range(17) and check[1] in range(17)):
                 if field[check] == -1:
-                    i = 3
-                    continue
+                    break  # Explosion blocked by a wall, check next direction
                 else:
-                    bomb_field.append(check)
-    return bomb_field
+                    future_explosions.append(check)
+    return future_explosions
 
 
 def find_next_to_crate(field):
-    # return possible positions next to crates as tuples
+    """Returns all possible positions that are next to crates
+
+    Parameters
+    ----------
+    field : 2dim ndarray
+
+    Returns
+    -------
+    next_to_crates : List of 2dim tuple
+
+    """
     next_to_crates = []
     ind_crates = np.argwhere(field == 1)
     for x, y in ind_crates:
@@ -409,11 +575,11 @@ if __name__ == '__main__':
     field[0] = np.ones(17)
     field[-1] = np.ones(17)
     field[:, (0, -1)] = 1
-    field[1:15, 5] = 1
+    field[1:15, 7] = 1
     field[3, 2:7] = 1
     field[1:4, 7] = 1
     start = (1, 1)
-    end = (1, 15)
+    end = addPosition(start, (0, 4))
     path = findPath(field, start, end)
     print(path)
     print(getItemDirection(field, end, start))

@@ -132,14 +132,14 @@ class GenericWorld:
 
     def perform_agent_action(self, agent: Agent, action: str):
         collect_coins = []
-        l_co = 200 #values if no nearest coin, crate or safe tile is found
+        l_co = 200  # values if no nearest coin, crate or safe tile is found
         l_cr = 200
         l_s = 5
         agent.old_position = (agent.x, agent.y)
         bomb_dropped = False
-        walk_field = copy.copy(self.arena)          
+        walk_field = copy.copy(self.arena)
         for bomb in self.bombs:
-            walk_field[bomb.x,bomb.y]= -1
+            walk_field[bomb.x, bomb.y] = -1
 
         # Perform the specified action if possible, wait otherwise
         if action == 'UP' and self.tile_is_free(agent.x, agent.y - 1):
@@ -163,10 +163,10 @@ class GenericWorld:
             if not escape_possible:
                 agent.add_event(e.OWN_BOMB_CANT_ESCAPE)
             bomb_dropped = True
-            walk_field[(agent.x,agent.y)] = -1
+            walk_field[(agent.x, agent.y)] = -2
             check_field = future_explosion_field((agent.x, agent.y), self.arena)
             for check_pos in check_field:
-                if (self.arena[check_pos[0],check_pos[1]]==1):
+                if (self.arena[check_pos[0], check_pos[1]] == 1):
                     agent.add_event(e.BOMB_WILL_DESTROY_CRATE)
                 for a in self.active_agents:
                     if (a is not agent) and (not a.dead) and ((a.x, a.y) == check_pos):
@@ -185,54 +185,54 @@ class GenericWorld:
 
         else:
             agent.add_event(e.INVALID_ACTION)
-            
+
         for coin in self.coins:
             if coin.collectable:
-                collect_coins.append((coin.x, coin.y))     
-        if len(collect_coins)>0:        
+                collect_coins.append((coin.x, coin.y))
+        if len(collect_coins) > 0:
             nearest_coin = findNearestItem(walk_field, collect_coins, (agent.x, agent.y))
             if nearest_coin != None:
-                path = findPath(walk_field,(agent.x,agent.y), nearest_coin)
+                path = findPath(walk_field, (agent.x, agent.y), nearest_coin)
                 l_co = len(path)
         if l_co < agent.current_path_length_coin:
             agent.add_event(e.MOVED_CLOSER_TO_COIN)
             agent.current_path_length_coin = l_co
 
         next_to_crates = find_next_to_crate(walk_field)
-        if len(next_to_crates)>0:        
+        if len(next_to_crates) > 0:
             nearest_crate = findNearestItem(walk_field, next_to_crates, (agent.x, agent.y))
             if nearest_crate != None:
-                path = findPath(walk_field,(agent.x,agent.y), nearest_crate)
+                path = findPath(walk_field, (agent.x, agent.y), nearest_crate)
                 l_cr = len(path)
         if l_cr < agent.current_path_length_crate:
             agent.add_event(e.MOVED_CLOSER_TO_CRATE)
             agent.current_path_length_crate = l_cr
-            
 
-        bombs=[]
+        bombs = []
         for bomb in self.bombs:
-            bombs.append(((bomb.x,bomb.y), bomb.timer))
-        in_danger, danger_score = dangerous_position((agent.x,agent.y), bombs, give_danger=True)
+            bombs.append(((bomb.x, bomb.y), bomb.timer))
+        in_danger, danger_score = dangerous_position((agent.x, agent.y), bombs)
         new_danger = False
         if in_danger or agent.been_in_danger:
             if not agent.been_in_danger:
                 new_danger = True
             if in_danger:
                 agent.been_in_danger = True
-            else: agent.been_in_danger = False
+            else:
+                agent.been_in_danger = False
             danger_field = []
             for bomb in self.bombs:
                 blast_coords = bomb.get_blast_coords(self.arena)
                 danger_field.append((bomb.x, bomb.y))
                 danger_field.extend(blast_coords)
             free_tiles = np.argwhere(walk_field == 0)
-            safe_tiles =[]
-            for [x,y] in free_tiles:
-                if (x,y) not in danger_field:
-                    safe_tiles.append((x,y))
-            nearest_safe_tile = findNearestItem(walk_field, safe_tiles, (agent.x,agent.y))
+            safe_tiles = []
+            for [x, y] in free_tiles:
+                if (x, y) not in danger_field:
+                    safe_tiles.append((x, y))
+            nearest_safe_tile = findNearestItem(walk_field, safe_tiles, (agent.x, agent.y))
             if nearest_safe_tile != None:
-                path = findPath(walk_field,(agent.x,agent.y), nearest_safe_tile)
+                path = findPath(walk_field, (agent.x, agent.y), nearest_safe_tile)
                 l_s = len(path)
                 if bomb_dropped or new_danger:
                     agent.current_path_length_safe = l_s
@@ -243,8 +243,6 @@ class GenericWorld:
         else:
             agent.current_path_length_safe = 5
             agent.been_in_danger = False
-
-        
 
     def poll_and_run_agents(self):
         raise NotImplementedError()

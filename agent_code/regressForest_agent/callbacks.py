@@ -57,8 +57,6 @@ def setup(self):
     """
     if self.train or not os.path.isfile(MODEL_NAME):
         self.logger.info("Setting up model from scratch.")
-        # weights = np.random.rand(len(ACTIONS))
-        # self.model = weights / weights.sum()
         self.model = Model()
         self.eps = epsilonPolicy([0, 1000, 2000], [1, 0.7, 0.3], [1 / 300, 1 / 300, 1 / 200], [0.05] * 3)
     else:
