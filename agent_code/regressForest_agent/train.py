@@ -159,22 +159,22 @@ def reward_from_events(self, events: List[str]) -> int:
     certain behavior.
     """
     game_rewards = {
-        e.COIN_COLLECTED: 100,
+        e.COIN_COLLECTED: 500,
         # e.KILLED_OPPONENT: 5, KILLED_OPPONENT is a bad event as it is disconnected from action unless we use 4 step TD
-        e.INVALID_ACTION: -100,
+        e.INVALID_ACTION: -200,
         # e.KILLED_SELF: -200, KILLED_SELF is a bad event as it is disconnected from action unless we use 4 step TD
-        e.MOVED_UP: -5,
-        e.MOVED_DOWN: -5,
-        e.MOVED_RIGHT: -5,
-        e.MOVED_LEFT: -5,
-        e.WAITED: -10,
+        e.MOVED_UP: -10,
+        e.MOVED_DOWN: -10,
+        e.MOVED_RIGHT: -10,
+        e.MOVED_LEFT: -10,
+        e.WAITED: -20,
         e.BOMB_DROPPED: -50,
         # e.CRATE_DESTROYED: 50 CRATE_DESTROYED is a bad event as it is disconnected from action unless we use 4 step TD
         # Custom Events
-        e.MOVED_IN_EXPLOSION: -200,
+        e.MOVED_IN_EXPLOSION: -300,
         e.MOVED_CLOSER_TO_COIN: 50,
         e.OWN_BOMB_CANT_ESCAPE: -400,
-        e.BOMB_THREATS_ENEMY: 100,
+        e.BOMB_THREATS_ENEMY: 200,
         e.BOMB_WILL_DESTROY_CRATE: 50,
         e.WAITED_WHILE_IN_DANGER: -100,
         e.WAITED_WHILE_NO_BOMB_AROUND: -100,

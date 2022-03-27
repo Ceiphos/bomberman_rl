@@ -58,7 +58,7 @@ def setup(self):
     if self.train or not os.path.isfile(MODEL_NAME):
         self.logger.info("Setting up model from scratch.")
         self.model = Model()
-        self.eps = epsilonPolicy([0, 1000, 2000], [1, 0.7, 0.3], [1 / 300, 1 / 300, 1 / 200], [0.05] * 3)
+        self.eps = epsilonPolicy([0, 1000, 2000, 3500], [1, 0.7, 0.3, 0.2], [1 / 300, 1 / 300, 1 / 200, 1 / 1000], [0.15, 0.25, 0.1, 0.05])
     else:
         self.logger.info("Loading model from saved state.")
         with open(MODEL_NAME, "rb") as file:

@@ -22,7 +22,7 @@ def movingaverage(interval, window_size):
     return np.convolve(interval, window, 'valid')
 
 
-eps = helper.epsilonPolicy([0, 1000, 2000], [1, 0.7, 0.3], [1 / 300, 1 / 300, 1 / 200], [0.05] * 3)
+eps = helper.epsilonPolicy([0, 1000, 2000, 3500], [1, 0.7, 0.3, 0.2], [1 / 300, 1 / 300, 1 / 200, 1 / 1000], [0.15, 0.25, 0.1, 0.05])
 epsilon = [eps.epsilon(round) for round in rounds]
 
 plt.figure(figsize=(12, 5))
