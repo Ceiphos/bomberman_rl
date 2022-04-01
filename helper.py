@@ -1,7 +1,9 @@
 import numpy as np
 import time
 
-SYMMETRIES = ['rotate_right', 'rotate_left', 'rotate_180', 'mirror_x', 'mirror_y', 'id']
+import copy
+
+SYMMETRIES = ['id', 'rotate_right', 'rotate_left', 'rotate_180', 'mirror_x', 'mirror_y']
 DIRECTIONS = {
     'UP': [1, 0, 0, 0, 0],
     'DOWN': [0, 1, 0, 0, 0],
@@ -60,27 +62,27 @@ def gameStateSymmetry(gameState, symmetry):
     if (symmetry == 'id'):
         return gameState
 
-    newGameState = gameState.copy()
+    newGameState = copy.deepcopy(gameState)
 
     def rotatePositions():
-        bombs = gameState['bombs']
+        bombs = newGameState['bombs']
         for i, bomb in enumerate(bombs):
             pos = np.array(bomb[0])
             pos = rotation @ (pos - center) + center
             bombs[i] = (tuple(pos.astype(int)), bomb[1])
 
-        coins = gameState['coins']
+        coins = newGameState['coins']
         for i, coin in enumerate(coins):
             pos = np.array(coin)
             pos = rotation @ (pos - center) + center
             coins[i] = tuple(pos.astype(int))
 
-        agent = gameState['self']
+        agent = newGameState['self']
         pos = np.array(agent[3])
         pos = rotation @ (pos - center) + center
         agent = (agent[0], agent[1], agent[2], tuple(pos.astype(int)))
 
-        others = gameState['others']
+        others = newGameState['others']
         for i, other in enumerate(others):
             pos = np.array(other[3])
             pos = rotation @ (pos - center) + center
@@ -93,24 +95,24 @@ def gameStateSymmetry(gameState, symmetry):
         newGameState['others'] = others
 
     def flipPosition(axis):
-        bombs = gameState['bombs']
+        bombs = newGameState['bombs']
         for i, bomb in enumerate(bombs):
             pos = np.array(bomb[0])
             pos[axis] = shape[axis] - 1 - pos[axis]
             bombs[i] = (tuple(pos), bomb[1])
 
-        coins = gameState['coins']
+        coins = newGameState['coins']
         for i, coin in enumerate(coins):
             pos = np.array(coin)
             pos[axis] = shape[axis] - 1 - pos[axis]
             coins[i] = tuple(pos)
 
-        agent = gameState['self']
+        agent = newGameState['self']
         pos = np.array(agent[3])
         pos[axis] = shape[axis] - 1 - pos[axis]
         agent = (agent[0], agent[1], agent[2], tuple(pos))
 
-        others = gameState['others']
+        others = newGameState['others']
         for i, other in enumerate(others):
             pos = np.array(other[3])
             pos[axis] = shape[axis] - pos[axis]
@@ -122,37 +124,37 @@ def gameStateSymmetry(gameState, symmetry):
         newGameState['self'] = agent
         newGameState['others'] = others
 
-    shape = np.array(gameState['field'].shape)
+    shape = np.array(newGameState['field'].shape)
     center = (shape - 1) / 2
     if (symmetry == 'rotate_right'):
-        newGameState['field'] = np.rot90(gameState['field'], -1)
-        newGameState['explosion_map'] = np.rot90(gameState['explosion_map'], -1)
+        newGameState['field'] = np.rot90(newGameState['field'], -1)
+        newGameState['explosion_map'] = np.rot90(newGameState['explosion_map'], -1)
 
         rotation = np.array(((0, 1), (-1, 0)))
         rotatePositions()
 
     if (symmetry == 'rotate_left'):
-        newGameState['field'] = np.rot90(gameState['field'], 1)
-        newGameState['explosion_map'] = np.rot90(gameState['explosion_map'], 1)
+        newGameState['field'] = np.rot90(newGameState['field'], 1)
+        newGameState['explosion_map'] = np.rot90(newGameState['explosion_map'], 1)
 
         rotation = np.array(((0, -1), (1, 0)))
         rotatePositions()
 
     if (symmetry == 'mirror_x'):
-        newGameState['field'] = np.fliplr(gameState['field'])
-        newGameState['explosion_map'] = np.fliplr(gameState['explosion_map'])
+        newGameState['field'] = np.fliplr(newGameState['field'])
+        newGameState['explosion_map'] = np.fliplr(newGameState['explosion_map'])
 
         flipPosition(0)
 
     if (symmetry == 'mirror_y'):
-        newGameState['field'] = np.flipud(gameState['field'])
-        newGameState['explosion_map'] = np.flipud(gameState['explosion_map'])
+        newGameState['field'] = np.flipud(newGameState['field'])
+        newGameState['explosion_map'] = np.flipud(newGameState['explosion_map'])
 
         flipPosition(1)
 
     if (symmetry == 'rotate_180'):
-        newGameState['field'] = np.rot90(gameState['field'], 2)
-        newGameState['explosion_map'] = np.rot90(gameState['explosion_map'], 2)
+        newGameState['field'] = np.rot90(newGameState['field'], 2)
+        newGameState['explosion_map'] = np.rot90(newGameState['explosion_map'], 2)
 
         rotation = np.array(((-1, 0), (0, -1)))
         rotatePositions()
@@ -587,6 +589,23 @@ if __name__ == '__main__':
     print(findNNearestItems(field, items, start, 2))
     print(findNearestItem(field, [(1, 6)], start))
 
+    game_state = {
+        'field': field,
+        'explosion_map': np.zeros_like(field),
+        'bombs': [],
+        'self': [0, 1, 2, [1, 1]],
+        'others': [],
+        'coins': items,
+    }
+
+    new_game_state = gameStateSymmetry(game_state, 'rotate_left')
+    # new_game_state = gameStateSymmetry(new_game_state, 'mirror_y')
+    # new_game_state = gameStateSymmetry(new_game_state, 'rotate_180')
+    print(np.all(game_state['field'] == new_game_state['field']))
+    print(game_state['coins'] == new_game_state['coins'])
+    action = 'RIGHT'
+    print(actionSym(action, 'rotate_left'))
+
     for y, row in enumerate(field.T):
         for x, value in enumerate(row):
             if ((x, y) in path):
@@ -597,10 +616,13 @@ if __name__ == '__main__':
                 print(int(value), end='')
         print()
 
-    a = epsilonPolicy([0, 1000, 2000], [1, 0.7, 0.3], [1 / 500, 1 / 300, 1 / 100], [0.05] * 3)
-    print(a.epsilon(0))
-    print(a.epsilon(999))
-    print(a.epsilon(1000))
-    print(a.epsilon(1999))
-    print(a.epsilon(2000))
-    print(a.epsilon(3000))
+    print()
+    for y, row in enumerate(new_game_state['field'].T):
+        for x, value in enumerate(row):
+            if ((x, y) in new_game_state['bombs']):
+                print("x", end='')
+            elif ((x, y) in new_game_state['coins']):
+                print("I", end='')
+            else:
+                print(int(value), end='')
+        print()
