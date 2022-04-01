@@ -3,13 +3,14 @@ import pickle
 import random
 
 import numpy as np
+from helper import findNearestItem, getItemDirection, findPath, addPosition, subPosition, epsilonPolicy
 
 np.seterr(all='raise')
 
 ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT', 'BOMB']
 
 MODEL_NAME = "linear_model.pt"
-FEATURE_SIZE = 55
+FEATURE_SIZE = 10
 
 
 class Model:
@@ -37,9 +38,8 @@ def setup(self):
     """
     if self.train or not os.path.isfile(MODEL_NAME):
         self.logger.info("Setting up model from scratch.")
-        # weights = np.random.rand(len(ACTIONS))
-        # self.model = weights / weights.sum()
         self.model = Model(FEATURE_SIZE)
+        self.eps = epsilonPolicy([0], [0.95], [1 / 100], [0.0])
     else:
         self.logger.info("Loading model from saved state.")
         with open(MODEL_NAME, "rb") as file:
@@ -55,9 +55,8 @@ def act(self, game_state: dict) -> str:
     :param game_state: The dictionary that describes everything on the board.
     :return: The action to take as a string.
     """
-    # todo Exploration vs exploitation
-    random_prob = .1
-    if self.train and random.random() < random_prob:
+    round = game_state['round']
+    if self.train and random.random() < self.eps.epsilon(round):
         self.logger.debug("Choosing action purely at random.")
         # 80%: walk in any direction. 10% wait. 10% bomb.
         return np.random.choice(ACTIONS, p=[.2, .2, .2, .2, .1, .1])
@@ -85,100 +84,62 @@ def state_to_features(game_state: dict, logger) -> np.array:
     if game_state is None:
         return None
 
-    DIRECTIONS = {
-        'UP': np.array((0, -1)),
-        'DOWN': np.array((0, 1)),
-        'LEFT': np.array((-1, 0)),
-        'RIGHT': np.array((1, 0)),
-        'NULL': np.array((0, 0))
-    }
+    features = []
 
-    coins = np.array(game_state['coins'])
-    position = np.array(game_state['self'][-1])
-    dropped_bomb = game_state['self'][2]
+    coins = game_state['coins']
+    position = game_state['self'][-1]
     field = game_state['field']
+    bombs = game_state['bombs']
+    explosion_field = game_state['explosion_map']
+    agents = game_state['others']
+    enemy_positions = [x[-1] for x in agents]
+    walk_field = field
+    bomb_times = [t for _, t in bombs]
+    bomb_spots = [pos for pos, _ in bombs]
+
+    crates = []
+    walls = []
+    for x, column in enumerate(field):
+        for y, value in enumerate(column):
+            if value == 1:
+                crates.append((x, y))
+            elif value == -1:
+                walls.append((x, y))
+    walls.extend(bomb_spots)  # we cant walk into bombs
+
+    # walking direction to nearest coin and path length
+    nearest_coin = findNearestItem(walk_field, coins, position)
+    features += getItemDirection(walk_field, nearest_coin, position)
+    if nearest_coin is not None:
+        path = findPath(walk_field, position, nearest_coin)
+        # if we stand on top of a coin and drop a bomb path is None
+        if path is not None:
+            features.append(len(findPath(walk_field, position, nearest_coin)) - 1)
+        else:
+            features.append(0)
+
+    else:
+        features.append(-1)
 
     # Sourrounding
-    x, y = position + DIRECTIONS['UP']
-    up_tile = field[x, y]
-    x, y = position + DIRECTIONS['DOWN']
-    down_tile = field[x, y]
-    x, y = position + DIRECTIONS['LEFT']
-    left_tile = field[x, y]
-    x, y = position + DIRECTIONS['RIGHT']
-    right_tile = field[x, y]
-    logger.debug("Calculated sourrounding")
+    features += surrounding(position, walls)  # 4 features
+    assert len(features) == FEATURE_SIZE
+    return np.array(features)
 
-    # 3 nearest coins
-    coin_distances = np.linalg.norm(coins-position, axis=1)
-    sort_indices = np.argsort(coin_distances)
-    nearest_coins = np.ones((3, 2)) * -field.shape[0]  # TODO
-    number_of_coins = min(3, len(sort_indices))
-    nearest_coins[:number_of_coins] = coins[sort_indices[:number_of_coins]]
-    logger.debug(f"Calculated 3 nearest coins. Found {number_of_coins}")
 
-    # walking direction to nearest coin #TODO proper path finding
-    nearest_coin_vec = nearest_coins[0]-position
-    if (nearest_coin_vec[0] > 0 and right_tile == 0):
-        nearest_coin_direction = DIRECTIONS['RIGHT']
-    elif (nearest_coin_vec[0] < 0 and left_tile == 0):
-        nearest_coin_direction = DIRECTIONS['LEFT']
-    elif (nearest_coin_vec[1] > 0 and down_tile == 0):
-        nearest_coin_direction = DIRECTIONS['DOWN']
-    elif (nearest_coin_vec[1] < 0 and up_tile == 0):
-        nearest_coin_direction = DIRECTIONS['UP']
-    else:
-        nearest_coin_direction = DIRECTIONS['NULL']
-    logger.debug("Calculated direction of nearest coin")
+def surrounding(position, walls):
+    directions = (
+        (0, -1),
+        (0, 1),
+        (-1, 0),
+        (1, 0),
+    )
+    result = []
+    for dir in directions:
+        s = addPosition(position, dir)
+        if s in walls:
+            result += [1]
+        else:
+            result += [0]
 
-    # 10 nearest empty tiles #TODO check accessible using path finding
-    empty_tiles = np.array(np.where(field == 0)).transpose()
-    empty_tile_distances = np.linalg.norm(empty_tiles-position, axis=1)
-    sort_indices = np.argsort(empty_tile_distances)
-    nearest_empty_tiles = np.ones((10, 2), dtype=int) * -1
-    number_of_empty_tiles = min(10, len(sort_indices))
-    nearest_empty_tiles[:number_of_empty_tiles] = empty_tiles[sort_indices[1:]][:number_of_empty_tiles]
-    nearest_empty_tiles = nearest_empty_tiles - position
-    logger.debug(f"Calculated 10 nearest empty tiles. Found {number_of_empty_tiles}")
-
-    # Bomb Info: Calculate Bomb field and use values of the field at the 10 nearest empty tiles
-    bomb_field = np.ones_like(field) * -1
-    for ((x, y), t) in game_state['bombs']:
-        # TODO Consider walls
-        for i in range(4):
-            if (x + i < bomb_field.shape[0]):
-                bomb_field[x + i, y] = min(t, bomb_field[x + i, y])
-            if (x - i >= 0):
-                bomb_field[x - i, y] = min(t, bomb_field[x - i, y])
-            if (y + i < bomb_field.shape[0]):
-                bomb_field[x, y + i] = min(t, bomb_field[x, y + i])
-            if (y - i >= 0):
-                bomb_field[x, y - i] = min(t, bomb_field[x, y - i])
-    nearest_bomb_field = np.empty(10)
-
-    nearest_bomb_field[:number_of_empty_tiles] = bomb_field[nearest_empty_tiles[:number_of_empty_tiles, 0], nearest_empty_tiles[:number_of_empty_tiles, 1]]
-
-    # Explosion Map: get the explosion map for the nearest 10 empty tiles
-    nearest_explosion_map = np.zeros(10)
-    nearest_explosion_map[:number_of_empty_tiles] = game_state['explosion_map'][nearest_empty_tiles[:number_of_empty_tiles, 0], nearest_empty_tiles[:number_of_empty_tiles, 1]]
-
-    # # For example, you could construct several channels of equal shape, ...
-    channels = []  # shape n,2
-    channels.append(position/field.shape[0])
-    channels.extend(nearest_coins/field.shape[0])
-    channels.append(nearest_coin_direction/field.shape[0])
-    channels.extend(nearest_empty_tiles/field.shape[0])
-    stacked_channels = np.stack(channels).reshape(-1)
-    channels.clear()  # now shape n
-    channels.append(int(dropped_bomb))
-    channels.append(up_tile)
-    channels.append(down_tile)
-    channels.append(left_tile)
-    channels.append(right_tile)
-    channels.extend(nearest_bomb_field/3)
-    channels.extend(nearest_explosion_map/2)
-
-    # concatenate them as a feature tensor (they must have the same shape), ...
-    stacked_channels = np.concatenate((stacked_channels, channels))
-    assert len(stacked_channels) == FEATURE_SIZE
-    return stacked_channels
+    return result
