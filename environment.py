@@ -192,10 +192,15 @@ class GenericWorld:
         if len(collect_coins) > 0:
             nearest_coin = findNearestItem(walk_field, collect_coins, (agent.x, agent.y))
             if nearest_coin != None:
-                path = findPath(walk_field, (agent.x, agent.y), nearest_coin)
-                l_co = len(path)
+                if (agent.x != nearest_coin[0] or agent.y != nearest_coin[1]):
+                    path = findPath(walk_field, (agent.x, agent.y), nearest_coin)
+                    l_co = len(path)
+                else:
+                    l_co = 0
         if l_co < agent.current_path_length_coin:
             agent.add_event(e.MOVED_CLOSER_TO_COIN)
+            agent.current_path_length_coin = l_co
+        elif agent.current_path_length_coin == -1:
             agent.current_path_length_coin = l_co
 
         next_to_crates = find_next_to_crate(walk_field)
@@ -280,6 +285,7 @@ class GenericWorld:
                         self.logger.info(f'Agent <{a.name}> picked up coin at {(a.x, a.y)} and receives 1 point')
                         a.update_score(s.REWARD_COIN)
                         a.add_event(e.COIN_COLLECTED)
+                        a.current_path_length_coin = -1
                         a.trophies.append(Trophy.coin_trophy)
 
     def update_explosions(self):
