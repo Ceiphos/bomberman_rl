@@ -132,7 +132,7 @@ class GenericWorld:
 
     def perform_agent_action(self, agent: Agent, action: str):
         collect_coins = []
-        l_co = 200  # values if no nearest coin, crate or safe tile is found
+        l_co = -1  # values if no nearest coin, crate or safe tile is found
         l_cr = 200
         l_s = 5
         agent.old_position = (agent.x, agent.y)
