@@ -2,7 +2,11 @@ from .callbacks import state_to_features, MODEL_NAME, ACTIONS
 import events as e
 from collections import namedtuple, deque
 
+from helper import gameStateSymmetry, actionSym, SYMMETRIES
+
 import pickle
+import os
+import random
 from typing import List
 import numpy as np
 np.seterr(all='raise')
@@ -13,13 +17,10 @@ Transition = namedtuple('Transition',
                         ('state', 'action', 'next_state', 'reward'))
 
 # Hyper parameters -- DO modify
-TRANSITION_HISTORY_SIZE = 30  # keep only ... last transitions
-RECORD_ENEMY_TRANSITIONS = 1.0  # record enemy transitions with probability ...
+TRANSITION_HISTORY_SIZE = 10000  # keep only ... last transitions
+TRAIN_BATCH_SIZE = 1000
 ALPHA = 0.1
 GAMMA = 0.9
-
-# Events
-PLACEHOLDER_EVENT = "PLACEHOLDER"
 
 
 def setup_training(self):
@@ -33,6 +34,11 @@ def setup_training(self):
     # Example: Setup an array that will note transition tuples
     # (s, a, r, s')
     self.transitions = deque(maxlen=TRANSITION_HISTORY_SIZE)
+    self.current_round_reward = 0
+    self.round = 0
+
+    if os.path.exists("logs/score.txt"):
+        os.remove("logs/score.txt")
 
 
 def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_state: dict, events: List[str]):
@@ -53,24 +59,13 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     :param events: The events that occurred when going from  `old_game_state` to `new_game_state`
     """
     self.logger.debug(f'Encountered game event(s) {", ".join(map(repr, events))} in step {new_game_state["step"]}')
+    reward = reward_from_events(self, events)
+    self.current_round_reward += reward
+    if (old_game_state != None and new_game_state != None):
+        features = state_to_features(old_game_state, self.logger)
+        newFeatures = state_to_features(new_game_state, self.logger)
+        self.transitions.append(Transition(features, self_action, newFeatures, reward))
 
-    # Idea: Add your own events to hand out rewards
-    # if ...:
-    #     events.append(PLACEHOLDER_EVENT)
-
-    # state_to_features is defined in callbacks.py
-    self.transitions.append(Transition(state_to_features(old_game_state, self.logger), self_action, state_to_features(new_game_state, self.logger), reward_from_events(self, events)))
-    feat=state_to_features(old_game_state, self.logger)
-    feat_new=state_to_features(new_game_state, self.logger)
-    if type(feat) == type(None) or type(feat_new) == type(None):
-                pass
-    else:
-        mirx_feat, mirx_action = mirrorx(feat,self_action)
-        mirx_feat_new, _ = mirrorx(feat_new, self_action)
-        miry_feat, miry_action = mirrory(feat,self_action)
-        miry_feat_new, _ = mirrory(feat_new, self_action)
-        self.transitions.append(Transition(mirx_feat, mirx_action, mirx_feat_new, reward_from_events(self, events)))
-        self.transitions.append(Transition(miry_feat, miry_action, miry_feat_new, reward_from_events(self, events)))
 
 def end_of_round(self, last_game_state: dict, last_action: str, events: List[str]):
     """
@@ -80,25 +75,42 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     :param self: The same object that is passed to all of your callbacks.
     """
     self.logger.debug(f'Encountered event(s) {", ".join(map(repr, events))} in final step')
-    self.transitions.append(Transition(state_to_features(last_game_state, self.logger), last_action, state_to_features(last_game_state, self.logger), reward_from_events(self, events)))
+    reward = reward_from_events(self, events)
+    self.current_round_reward += reward
+    self.round += 1
+    features = state_to_features(last_game_state, self.logger)
+    self.transitions.append(Transition(features, last_action, None, reward))
+
+    if (len(self.transitions) < TRAIN_BATCH_SIZE):
+        return
 
     self.logger.info('Round Ended. Start model update')
+
+    batch = random.sample(self.transitions, TRAIN_BATCH_SIZE)
     oldBeta = self.model.beta
-    for i, _ in enumerate(ACTIONS):
-        summe = 0
-        for (feature, action, next_feature, reward) in self.transitions:
-            if type(feature) == type(None) or type(next_feature) == type(None):
+    for i, train_action in enumerate(ACTIONS):
+        sum = 0
+        n = 0
+        for (feature, action, next_feature, reward) in batch:
+            if type(feature) == type(None) or type(next_feature) == type(None) or action != train_action:
                 continue
             Qs = [self.model.Q(next_feature, a) for a in range(len(ACTIONS))]
             Y = reward + GAMMA * np.max(Qs)
-            summe += np.transpose(feature) * (Y - feature @ oldBeta[i])
+            sum += np.transpose(feature) * (Y - feature @ oldBeta[i])
+            n += 1
 
-        newBeta = oldBeta[i] + ALPHA/len(self.transitions) * summe
-        self.logger.debug(f'Updated beta for action {ACTIONS[i]}')
-        self.model.updateBeta(i, newBeta)
+        if n != 0:
+            newBeta = oldBeta[i] + ALPHA / n * sum
+            self.logger.debug(f'Updated beta for action {ACTIONS[i]}')
+            self.model.updateBeta(i, newBeta)
 
-    self.transitions.clear()
-    self.model.EXPLORATION_RATE = max(0.05, self.model.EXPLORATION_RATE*0.96)
+    with open("logs/score.txt", "a") as file:
+        log_string = ""
+        log_string += f" {self.round}"
+        log_string += f" {self.current_round_reward}"
+        file.write(log_string + "\n")
+
+    self.current_round_reward = 0
 
     # Store the model
     with open(MODEL_NAME, "wb") as file:
@@ -113,15 +125,17 @@ def reward_from_events(self, events: List[str]) -> int:
     certain behavior.
     """
     game_rewards = {
-        #e.COIN_COLLECTED: 2,
-        #e.KILLED_OPPONENT: 5,
-        e.INVALID_ACTION: -0.5,
-        #e.KILLED_SELF: -5,
-        e.MOVED_UP: 0.5,   #moved:0.5 waited: -0.2
-        e.MOVED_DOWN: 0.5,
-        e.MOVED_RIGHT: 0.5,
-        e.MOVED_LEFT: 0.5,
-        #e.WAITED: -0.2
+        e.COIN_COLLECTED: 5,
+        e.MOVED_CLOSER_TO_COIN: 1.5,
+        # e.KILLED_OPPONENT: 5,
+        e.INVALID_ACTION: -5,
+        # e.KILLED_SELF: -5,
+        e.MOVED_UP: -0.5,
+        e.MOVED_DOWN: -0.5,
+        e.MOVED_RIGHT: -0.5,
+        e.MOVED_LEFT: -0.5,
+        e.WAITED: -1,
+        e.BOMB_DROPPED: -1
     }
     reward_sum = 0
     for event in events:
@@ -129,38 +143,3 @@ def reward_from_events(self, events: List[str]) -> int:
             reward_sum += game_rewards[event]
     self.logger.debug(f"Awarded {reward_sum} for events {', '.join(events)}")
     return reward_sum
-
-
-def mirrory(features, action):
-    if action == 'UP':
-        mir_act = 'DOWN'
-    elif action == 'DOWN':
-        mir_act = 'UP'
-    else:
-        mir_act = action
-    miry_feats= features
-   # miry_feats[1] = 1-features[1]
-    miry_feats[0] = features[1]
-    miry_feats[1] = features[0]
-   # miry_feats[7] = 1-features[7]
-    #miry_feats[9] = 1-features[9]
-    #miry_feats[11] = 1-features[11]
-    #miry_feats[13] = -1*features[13]
-    return miry_feats, mir_act
-
-def mirrorx(features, action):
-    if action == 'LEFT':
-        mir_act = 'RIGHT'
-    elif action == 'RIGHT':
-        mir_act = 'LEFT'
-    else:
-        mir_act = action
-    mirx_feats= features
-    #mirx_feats[0] = 1-features[0]
-    mirx_feats[2] = features[3]
-    mirx_feats[3] = features[2]
-    #mirx_feats[6] = 1-features[6]
-    #mirx_feats[8] = 1-features[8]
-    #mirx_feats[10] = 1-features[10]
-    #mirx_feats[12] = -1*features[12]
-    return mirx_feats, mir_act
