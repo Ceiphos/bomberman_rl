@@ -84,7 +84,7 @@ class Agent:
         self.train = train
 
         self.total_score = 0
-        self.current_path_length_coin = 200
+        self.current_path_length_coin = -1
         self.current_path_length_crate = 3
         self.current_path_length_safe = 5
 
@@ -101,7 +101,7 @@ class Agent:
 
         self.x = None
         self.y = None
-        self.old_position = (self.x,self.y)
+        self.old_position = (self.x, self.y)
         self.bombs_left = None
 
         self.last_game_state = None
@@ -125,12 +125,9 @@ class Agent:
         self.score = 0
         self.been_in_danger = False
 
-
-        self.current_path_length_coin = 200
+        self.current_path_length_coin = -1
         self.current_path_length_crate = 3
         self.current_path_length_safe = 4
-
-
 
         self.statistics = defaultdict(int)
         self.trophies = []
@@ -237,7 +234,8 @@ class AgentRunner:
         self.fake_self.logger = logging.getLogger(self.agent_name + '_code')
         self.fake_self.logger.setLevel(s.LOG_AGENT_CODE)
         log_dir = f'agent_code/{self.code_name}/logs/'
-        if not os.path.exists(log_dir): os.makedirs(log_dir)
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
         handler = logging.FileHandler(f'{log_dir}{self.agent_name}.log', mode="w")
         handler.setLevel(logging.DEBUG)
         formatter = logging.Formatter('%(asctime)s [%(name)s] %(levelname)s: %(message)s')

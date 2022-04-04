@@ -17,8 +17,8 @@ Transition = namedtuple('Transition',
                         ('state', 'action', 'next_state', 'reward'))
 
 # Hyper parameters -- DO modify
-TRANSITION_HISTORY_SIZE = 10000  # keep only ... last transitions
-TRAIN_BATCH_SIZE = 1000
+TRANSITION_HISTORY_SIZE = 500000  # keep only ... last transitions
+TRAIN_BATCH_SIZE = 5000
 ALPHA = 0.1
 GAMMA = 0.9
 
@@ -135,7 +135,15 @@ def reward_from_events(self, events: List[str]) -> int:
         e.MOVED_RIGHT: -0.5,
         e.MOVED_LEFT: -0.5,
         e.WAITED: -1,
-        e.BOMB_DROPPED: -1
+        e.BOMB_DROPPED: -1,
+        # For Scenario 2+
+        e.BOMB_THREATS_ENEMY: 10,
+        e.BOMB_WILL_DESTROY_CRATE: 0.5,
+        e.MOVED_IN_EXPLOSION: -5,
+        e.ESCAPES: 1.5,
+        e.OWN_BOMB_CANT_ESCAPE: -10,
+        e.WAITED_WHILE_NO_BOMB_AROUND: -5,
+        e.WAITED_WHILE_IN_DANGER: -7
     }
     reward_sum = 0
     for event in events:
