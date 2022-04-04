@@ -20,10 +20,7 @@ TRAIN_EVERY_N_GAMES = 20
 
 TRAIN_BATCH_SIZE = 10000
 TRANSITION_HISTORY_SIZE = 500000  # keep only ... last transitions
-ALPHA = 0.1
 GAMMA = 0.99
-
-# Events
 
 
 def setup_training(self):
@@ -74,6 +71,7 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
             newFeatures = state_to_features(gameStateSymmetry(new_game_state, sym), self.logger)
             self_action = actionSym(self_action, sym)
             self.transitions.append(Transition(features, self_action, newFeatures, reward))
+            break  # It appears that the symmetry approach worsens performance, we only take the original transition
 
 
 def end_of_round(self, last_game_state: dict, last_action: str, events: List[str]):
@@ -93,6 +91,7 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
             features = state_to_features(gameStateSymmetry(last_game_state, sym), self.logger)
             last_action = actionSym(last_action, sym)
             self.transitions.append(Transition(features, last_action, None, reward))
+            break  # It appears that the symmetry approach worsens performance, we only take the original transition
 
     self.round += 1
     self.logger.info('Round Ended')
@@ -140,7 +139,7 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
         log_string += f" {np.amax(self.round_rewards):.1f}"
         file.write(log_string + "\n")
 
-    if np.mean(self.round_rewards) > 300:
+    if np.mean(self.round_rewards) > 50:
         with open(f"good_models/{self.model_dir}/round_{self.round}_avg_{np.mean(self.round_rewards):.0f}.pt", "wb") as file:
             pickle.dump(self.model, file)
     self.round_rewards.clear()
@@ -159,27 +158,24 @@ def reward_from_events(self, events: List[str]) -> int:
     certain behavior.
     """
     game_rewards = {
-        e.COIN_COLLECTED: 500,
-        # e.KILLED_OPPONENT: 5, KILLED_OPPONENT is a bad event as it is disconnected from action unless we use 4 step TD
-        e.INVALID_ACTION: -200,
-        # e.KILLED_SELF: -200, KILLED_SELF is a bad event as it is disconnected from action unless we use 4 step TD
-        e.MOVED_UP: -10,
-        e.MOVED_DOWN: -10,
-        e.MOVED_RIGHT: -10,
-        e.MOVED_LEFT: -10,
-        e.WAITED: -20,
-        e.BOMB_DROPPED: -50,
-        # e.CRATE_DESTROYED: 50 CRATE_DESTROYED is a bad event as it is disconnected from action unless we use 4 step TD
-        # Custom Events
-        e.MOVED_IN_EXPLOSION: -300,
-        e.MOVED_CLOSER_TO_COIN: 50,
-        e.OWN_BOMB_CANT_ESCAPE: -400,
-        e.BOMB_THREATS_ENEMY: 200,
-        e.BOMB_WILL_DESTROY_CRATE: 50,
-        e.WAITED_WHILE_IN_DANGER: -100,
-        e.WAITED_WHILE_NO_BOMB_AROUND: -100,
-        e.ESCAPES: 100,
-
+        e.COIN_COLLECTED: 5,
+        e.MOVED_CLOSER_TO_COIN: 1.5,
+        # e.KILLED_OPPONENT: 5,
+        e.INVALID_ACTION: -5,
+        # e.KILLED_SELF: -5,
+        e.MOVED_UP: -0.5,
+        e.MOVED_DOWN: -0.5,
+        e.MOVED_RIGHT: -0.5,
+        e.MOVED_LEFT: -0.5,
+        e.WAITED: -1,
+        e.BOMB_DROPPED: -1,
+        e.BOMB_THREATS_ENEMY: 10,
+        e.BOMB_WILL_DESTROY_CRATE: 0.5,
+        e.MOVED_IN_EXPLOSION: -5,
+        e.ESCAPES: 1.5,
+        e.OWN_BOMB_CANT_ESCAPE: -10,
+        e.WAITED_WHILE_NO_BOMB_AROUND: -5,
+        e.WAITED_WHILE_IN_DANGER: -7
     }
     reward_sum = 0
     for event in events:

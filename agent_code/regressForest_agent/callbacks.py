@@ -14,7 +14,7 @@ ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT', 'BOMB']
 
 
 MODEL_NAME = "regressForest_model.pt"
-FEATURE_SIZE = 32
+FEATURE_SIZE = 34
 escape_path = []
 
 
@@ -58,7 +58,7 @@ def setup(self):
     if self.train or not os.path.isfile(MODEL_NAME):
         self.logger.info("Setting up model from scratch.")
         self.model = Model()
-        self.eps = epsilonPolicy([0, 1000, 2000, 3500], [1, 0.7, 0.3, 0.2], [1 / 300, 1 / 300, 1 / 200, 1 / 1000], [0.15, 0.25, 0.1, 0.05])
+        self.eps = epsilonPolicy([0, 2500], [0.95, 0.45], [1 / 1000, 1 / 100], [0.05, 0.05])
     else:
         self.logger.info("Loading model from saved state.")
         with open(MODEL_NAME, "rb") as file:
@@ -105,6 +105,49 @@ def state_to_features(game_state: dict, logger) -> np.array:
     if game_state is None:
         return None
 
+    # For Coin-Heaven scenario
+    # features = []
+
+    # coins = game_state['coins']
+    # position = game_state['self'][-1]
+    # field = game_state['field']
+    # bombs = game_state['bombs']
+    # explosion_field = game_state['explosion_map']
+    # agents = game_state['others']
+    # enemy_positions = [x[-1] for x in agents]
+    # walk_field = field
+    # bomb_times = [t for _, t in bombs]
+    # bomb_spots = [pos for pos, _ in bombs]
+
+    # crates = []
+    # walls = []
+    # for x, column in enumerate(field):
+    #     for y, value in enumerate(column):
+    #         if value == 1:
+    #             crates.append((x, y))
+    #         elif value == -1:
+    #             walls.append((x, y))
+    # walls.extend(bomb_spots)  # we cant walk into bombs
+
+    # # walking direction to nearest coin and path length
+    # nearest_coin = findNearestItem(walk_field, coins, position)
+    # features += getItemDirection(walk_field, nearest_coin, position)
+    # if nearest_coin is not None:
+    #     path = findPath(walk_field, position, nearest_coin)
+    #     # if we stand on top of a coin and drop a bomb path is None
+    #     if path is not None:
+    #         features.append(len(findPath(walk_field, position, nearest_coin)) - 1)
+    #     else:
+    #         features.append(0)
+
+    # else:
+    #     features.append(-1)
+
+    # # Sourrounding
+    # features += surrounding(position, walls)  # 4 features
+    # assert len(features) == FEATURE_SIZE
+    # return np.array(features)
+
     features = []
 
     coins = game_state['coins']
@@ -145,8 +188,8 @@ def state_to_features(game_state: dict, logger) -> np.array:
             destroyable_crates += 1
         elif tile in enemy_positions:
             threatened_enemy += 1
-    # features.append(destroyable_crates)
-    # features.append(threatened_enemy)
+    features.append(destroyable_crates)
+    features.append(threatened_enemy)
 
     danger_score_position = bomb_field[position]
     features.append(danger_score_position)
@@ -214,6 +257,24 @@ def state_to_features(game_state: dict, logger) -> np.array:
     features += surrounding(position, walls, crates, enemy_positions)  # 12 features
     assert len(features) == FEATURE_SIZE
     return np.array(features)
+
+# For Coin-Heaven scenario
+# def surrounding(position, walls):
+#     directions = (
+#         (0, -1),
+#         (0, 1),
+#         (-1, 0),
+#         (1, 0),
+#     )
+#     result = []
+#     for dir in directions:
+#         s = addPosition(position, dir)
+#         if s in walls:
+#             result += [1]
+#         else:
+#             result += [0]
+
+#     return result
 
 
 def surrounding(position, walls, crates, agents):
